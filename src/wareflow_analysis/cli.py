@@ -2,6 +2,8 @@
 
 import typer
 
+from wareflow_analysis.init import initialize_project
+
 app = typer.Typer(
     name="wareflow",
     help="Wareflow Analysis - Warehouse data analysis CLI",
@@ -17,8 +19,17 @@ def init(
     ),
 ) -> None:
     """Initialize a new Wareflow analysis project."""
-    typer.echo(f"Creating project: {project_name}")
-    typer.echo("Not implemented yet")
+    success, message = initialize_project(project_name)
+
+    if success:
+        typer.echo(message)
+        typer.echo("\nNext steps:")
+        typer.echo(f"  cd {project_name}")
+        typer.echo("  # Place your Excel files in data/ directory")
+        typer.echo("  wareflow import")
+    else:
+        typer.echo(f"Error: {message}", err=True)
+        raise typer.Exit(1)
 
 
 @app.command()
