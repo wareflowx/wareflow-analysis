@@ -1,0 +1,41 @@
+[project]
+name = "wareflow-analysis"
+version = "0.1.0"
+description = "Warehouse data analysis CLI tool"
+readme = "README.md"
+requires-python = ">=3.8"
+authors = [
+    { name = "AliiiBenn", email = "davidddpereiraaa6@gmail.com" }
+]
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+]
+
+dependencies = [
+    "typer>=0.21",
+    "pandas>=2.0",
+    "openpyxl>=3.0",
+]
+
+[project.scripts]
+wareflow = "wareflow_analysis.cli:cli"
+
+[dependency-groups]
+dev = [
+    "pytest>=9.0",
+    "pytest-cov",
+    "ruff>=0.14",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.ruff]
+line-length = 100
+target-version = "py38"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

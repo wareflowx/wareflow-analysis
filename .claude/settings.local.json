@@ -1,0 +1,8 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(gh label create:*)",
+      "Bash(uv add:*)"
+    ]
+  }
+}
