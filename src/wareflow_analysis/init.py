@@ -127,7 +127,7 @@ def initialize_project(project_name: str, base_dir: Path | None = None) -> tuple
         # Create .gitkeep files
         create_gitkeep_files(project_path)
 
-        return True, f"✓ Project '{project_name}' created successfully!"
+        return True, f"Project '{project_name}' created successfully!"
     except PermissionError:
         return False, "Permission denied: Cannot create project directory"
     except Exception as e:

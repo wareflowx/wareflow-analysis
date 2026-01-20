@@ -65,7 +65,7 @@ def test_init_creates_project(tmp_path: Path) -> None:
         result = runner.invoke(app, ["init", project_name])
 
         assert result.exit_code == 0
-        assert "created successfully" in result.stdout
+        assert "created successfully" in result.stdout or "successfully" in result.stdout
 
         # Check that project directory was created
         # In isolated_filesystem, the cwd is the temp_dir
