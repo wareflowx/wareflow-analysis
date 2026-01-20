@@ -6,7 +6,7 @@ CLI tool for warehouse data analysis automation.
 
 ```bash
 # Clone repository
-git clone https://github.com/your-username/wareflow-analysis
+git clone https://github.com/wareflowx/wareflow-analysis
 cd wareflow-analysis
 
 # Install with uv

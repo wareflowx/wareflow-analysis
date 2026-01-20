@@ -5,7 +5,7 @@ description = "Warehouse data analysis CLI tool"
 readme = "README.md"
 requires-python = ">=3.10"
 authors = [
-    { name = "AliiiBenn", email = "davidddpereiraaa6@gmail.com" }
+    { name = "Code with dave", email = "davidddpereiraaa6@gmail.com" }
 ]
 classifiers = [
     "Programming Language :: Python :: 3",
@@ -21,6 +21,11 @@ dependencies = [
 
 [project.scripts]
 wareflow = "wareflow_analysis.cli:cli"
+
+[project.urls]
+Homepage = "https://github.com/wareflowx/wareflow-analysis"
+Repository = "https://github.com/wareflowx/wareflow-analysis"
+Issues = "https://github.com/wareflowx/wareflow-analysis/issues"
 
 [dependency-groups]
 dev = [
