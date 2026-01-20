@@ -2,7 +2,11 @@
   "permissions": {
     "allow": [
       "Bash(gh label create:*)",
-      "Bash(uv add:*)"
+      "Bash(uv add:*)",
+      "Bash(uv run wareflow --help:*)",
+      "Bash(uv run pytest:*)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)"
     ]
   }
 }
