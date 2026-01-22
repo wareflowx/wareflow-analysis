@@ -17,6 +17,8 @@ dependencies = [
     "typer>=0.21",
     "pandas>=2.0",
     "openpyxl>=3.0",
+    "excel-to-sql>=0.3.0",
+    "pyyaml",
 ]
 
 [project.scripts]
