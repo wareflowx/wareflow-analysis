@@ -1,8 +1,14 @@
 """Wareflow Analysis CLI."""
 
+from pathlib import Path
 import typer
 
 from wareflow_analysis.init import initialize_project
+from wareflow_analysis.data_import.importer import (
+    get_import_status,
+    init_import_config,
+    run_import,
+)
 
 app = typer.Typer(
     name="wareflow",
@@ -26,16 +32,66 @@ def init(
         typer.echo("\nNext steps:")
         typer.echo(f"  cd {project_name}")
         typer.echo("  # Place your Excel files in data/ directory")
-        typer.echo("  wareflow import")
+        typer.echo("  wareflow import-data --init")
     else:
         typer.echo(f"Error: {message}", err=True)
         raise typer.Exit(1)
 
 
 @app.command()
-def import_data() -> None:
-    """Import data from Excel files to SQLite."""
-    typer.echo("Import command not implemented yet")
+def import_data(
+    init_config: bool = typer.Option(
+        False,
+        "--init",
+        "-i",
+        help="Generate import configuration using Auto-Pilot",
+    ),
+    verbose: bool = typer.Option(
+        True,
+        "--quiet/--verbose",
+        "-q/-v",
+        help="Control output verbosity",
+    ),
+) -> None:
+    """Import data from Excel files to SQLite using Auto-Pilot Mode.
+
+    Examples:
+        wareflow import-data --init        # Generate configuration first
+        wareflow import-data               # Import using existing configuration
+        wareflow import-data --quiet       # Import with minimal output
+    """
+    # Check we're in a wareflow project
+    project_dir = Path.cwd()
+    config_file = project_dir / "config.yaml"
+
+    if not config_file.exists():
+        typer.echo(
+            "Error: Not in a wareflow project directory. "
+            "Run 'wareflow init' first.",
+            err=True,
+        )
+        raise typer.Exit(1)
+
+    # Initialize configuration if requested
+    if init_config:
+        data_dir = project_dir / "data"
+        success, message = init_import_config(data_dir, project_dir, verbose)
+
+        if not success:
+            typer.echo(f"Error: {message}", err=True)
+            raise typer.Exit(1)
+
+        typer.echo(message)
+        return
+
+    # Run import using existing configuration
+    success, message = run_import(project_dir, verbose)
+
+    if not success:
+        typer.echo(f"Error: {message}", err=True)
+        raise typer.Exit(1)
+
+    typer.echo(message)
 
 
 @app.command()
@@ -59,7 +115,36 @@ def run() -> None:
 @app.command()
 def status() -> None:
     """Show database status."""
-    typer.echo("Status command not implemented yet")
+    # Check we're in a wareflow project
+    project_dir = Path.cwd()
+    config_file = project_dir / "config.yaml"
+
+    if not config_file.exists():
+        typer.echo("Error: Not in a wareflow project directory.", err=True)
+        raise typer.Exit(1)
+
+    status_info = get_import_status(project_dir)
+
+    typer.echo("\n" + "=" * 50)
+    typer.echo("WAREFLOW PROJECT STATUS")
+    typer.echo("=" * 50)
+
+    if not status_info["database_exists"]:
+        typer.echo("\nDatabase: Not created yet")
+        typer.echo("\nRun 'wareflow import' to create the database.")
+    else:
+        typer.echo(f"\nDatabase: {status_info.get('database_path', 'warehouse.db')}")
+        typer.echo("\nTables:")
+
+        if status_info["tables"]:
+            for table_name, row_count in status_info["tables"].items():
+                typer.echo(f"  {table_name:20} {row_count:>10,} rows")
+        else:
+            typer.echo("  (no data imported yet)")
+            if "error" in status_info:
+                typer.echo(f"\nError reading database: {status_info['error']}")
+
+    typer.echo("\n" + "=" * 50)
 
 
 def cli() -> None:

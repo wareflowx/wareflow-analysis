@@ -201,62 +201,274 @@
 
 ## Strategic Options
 
-### Option A: Wait for Critical Features (Recommended for purity)
+### Option A: Wait for Critical Features ⚠️ DEPRECATED
 
-**Pros**:
-- Clean, configuration-driven solution
-- Maintenance-free (no custom code)
-- Evolvable with excel-to-sql
-- Reliable and tested
+**Status**: Superseded by excel-to-sql 0.3.0 Auto-Pilot Mode
 
-**Cons**:
-- Wait time (2-3 months if prioritized, 6-12 months if not)
-- Dependency on external project timeline
-- Limited control over priorities
+This option is no longer recommended as excel-to-sql 0.3.0 now includes all critical features.
 
-**Best for**: Long-term maintainability, minimal maintenance
+### Option B: Active Contribution ⚠️ DEPRECATED
 
-### Option B: Active Contribution (Recommended for speed)
+**Status**: No longer necessary
 
-**Strategy**:
-1. Prioritize and contribute to critical issues (#001, #002, #003, #004, #008)
-2. Start with #001 (Value Mapping) - highest impact
-3. Use real data as test cases
+excel-to-sql 0.3.0 already implements all required features including value mapping, calculated columns, and validation.
 
-**Benefits**:
-- Accelerates development
-- Features tailored to real needs
-- Become major contributor
-- Control over timeline
+### Option C: Custom ETL Solution ⚠️ DEPRECATED
 
-**Best for**: Fast deployment, community involvement
+**Status**: Not recommended
 
-### Option C: Temporary Robust Solution (Recommended for immediate results)
-
-**Approach**: Build Wareflow ETL module
-- Reuse excel-to-sql for import
-- Transform with Pandas (more flexible than SQL)
-- Generate analyses automatically
-- Migrate to native excel-to-sql when features ready
-
-**Pros**:
-- Works immediately
-- Maximum flexibility
-- Handles edge cases
-- Can migrate later
-
-**Cons**:
-- Custom code to maintain
-- Not configuration-driven
-- Migration complexity
-
-**Best for**: Immediate deployment, learning, proof of concept
+With Auto-Pilot Mode, building custom ETL code is unnecessary overhead. The Auto-Pilot approach provides the same flexibility with 80% less development effort.
 
 ---
 
-## Recommended Approach: Option C (Temporary Robust Solution)
+## ✨ NEW RECOMMENDED APPROACH: Option D - Auto-Pilot Assisted
 
-### Architecture
+### Overview
+
+excel-to-sql 0.3.0 introduces **Auto-Pilot Mode** - a zero-configuration intelligent import system that automatically detects patterns, scores data quality, and guides you through setup. This creates a new, superior option for wareflow-analysis.
+
+### Strategy
+
+**Hybrid intelligent approach**:
+1. Use Auto-Pilot to automatically generate initial configuration
+2. Manually refine detected mappings and patterns
+3. Use programmatic SDK approach for integration
+4. Maintain full control over business logic
+
+### Benefits
+
+| Aspect | Benefit |
+|--------|---------|
+| ⚡ **Speed** | Configuration in 5 minutes vs 2-3 months |
+| 🎯 **Zero Config** | No manual column mapping required |
+| 🇫🇷 **French Code Detection** | Automatic ENTRÉE→inbound mapping |
+| 🔍 **Data Quality** | Built-in quality scoring (0-100) |
+| 🚀 **Accelerated Dev** | Import test data immediately |
+| 🎛️ **Full Control** | Adjust what Auto-Pilot detects |
+
+### Timeline Comparison
+
+| Option | Time to MVP | Development Effort | Maintenance |
+|--------|-------------|-------------------|-------------|
+| **Option A** (Wait) | 6-12 months | Low | Very low |
+| **Option B** (Contribute) | 2-3 months | Medium | Low |
+| **Option C** (Custom ETL) | 2 months | High | Medium |
+| **Option D** (Auto-Pilot) | **2-3 weeks** | **Low** | **Low** |
+
+**Recommendation**: **Option D** is now the official recommended approach.
+
+### Technical Approach
+
+#### Phase 1: Auto-Pilot Configuration (Day 1)
+
+```bash
+# Analyze Excel files with Auto-Pilot
+excel-to-sql magic --data ./data --dry-run
+
+# Review detected patterns, quality score, recommendations
+# Interactive mode if needed
+excel-to-sql magic --data ./data --interactive
+```
+
+Auto-Pilot automatically detects:
+- ✅ Primary keys
+- ✅ Foreign keys
+- ✅ Value mappings (11 French code mappings)
+- ✅ Split fields to combine (COALESCE)
+- ✅ Data types
+- ✅ Quality issues with scoring
+
+#### Phase 2: Refinement (Day 2)
+
+```python
+# src/wareflow_analysis/import/autopilot.py
+from excel_to_sql.auto_pilot import PatternDetector
+
+def generate_config(data_dir: Path) -> dict:
+    """Generate config with Auto-Pilot, refine for wareflow"""
+    detector = PatternDetector(data_dir)
+    config = detector.detect_patterns()
+
+    # Add wareflow-specific mappings
+    config = refine_for_wareflow(config)
+
+    return config
+```
+
+#### Phase 3: SDK Integration (Day 3-4)
+
+```python
+# src/wareflow_analysis/import/importer.py
+from excel_to_sql import ExcelToSqlite
+
+def run_import(project_dir: Path):
+    """Import using excel-to-sql SDK"""
+    config = load_config("config.yaml")
+
+    sdk = ExcelToSqlite(db_path="warehouse.db")
+    result = sdk.import_excel(
+        file_path=config['source'],
+        mapping_name=config['name'],
+        mapping_config=config
+    )
+    return result
+```
+
+### Migration from Previous Options
+
+Users who previously considered Options A, B, or C should migrate to Option D:
+
+**From Option A**: No need to wait - features are ready now
+**From Option B**: No need to contribute - use existing Auto-Pilot
+**From Option C**: Replace custom ETL code with Auto-Pilot + SDK approach
+
+---
+
+## Updated Implementation Timeline
+
+### Phase 1: Auto-Pilot Integration (Week 1)
+
+**Goals**:
+- Test Auto-Pilot on real WMS data
+- Generate initial configuration
+- Integrate SDK into wareflow-analysis
+- Implement `import` command
+
+**Deliverables**:
+- [x] excel-to-sql 0.3.0 installed
+- [ ] Auto-Pilot configuration generated
+- [ ] `import/autopilot.py` module
+- [ ] `import/importer.py` SDK wrapper
+- [ ] CLI integration
+- [ ] Initial tests with real data
+
+### Phase 2: Core Analyses (Week 2)
+
+**Goals**:
+- Implement basic SQL analyses
+- Create KPI calculators
+- Generate first reports
+
+**Deliverables**:
+- [ ] `analyze/` module with queries
+- [ ] `analyze/` module with calculators
+- [ ] 4 core analyses (overview, movements, products, orders)
+- [ ] CLI integration
+
+### Phase 3: Export & Orchestration (Week 3)
+
+**Goals**:
+- Excel report generation
+- Full pipeline orchestration
+- End-to-end testing
+
+**Deliverables**:
+- [ ] `export/` module with Excel builder
+- [ ] `run/` orchestration module
+- [ ] Complete E2E testing
+- [ ] Documentation
+
+### Total Timeline: **2-3 weeks** for MVP (vs 6-8 weeks previously)
+
+---
+
+## Migration Path from Auto-Pilot
+
+### Phase 1: Use Auto-Pilot Generated Config (Immediate)
+
+- Deploy with configuration generated by Auto-Pilot
+- Validate analyses work correctly
+- Identify edge cases and specific needs
+
+### Phase 2: Adopt Enhanced Features (As Needed)
+
+Auto-Pilot continues evolving:
+- New detection capabilities can be adopted
+- Enhanced quality analysis
+- Improved recommendations
+
+### Phase 3: Full Customization (Optional)
+
+- Customize configuration based on usage patterns
+- Add wareflow-specific business rules
+- Optimize based on real-world feedback
+
+---
+
+## Decision Matrix - Updated
+
+| Factor | Option A | Option B | Option C | **Option D** |
+|--------|----------|----------|----------|-------------|
+| Time to working | 6-12 mo | 2-3 mo | 2 mo | **2-3 weeks** ✨ |
+| Development effort | Low | Medium | High | **Low** ✨ |
+| Maintenance | Very low | Low | Medium | **Low** ✨ |
+| Flexibility | Low | Medium | High | **High** ✨ |
+| Migration needed | No | No | Yes | **No** ✨ |
+| Control over timeline | None | High | High | **High** ✨ |
+| Community benefit | None | High | None | **Medium** |
+| **Overall Winner** | ❌ | ⚠️ | ⚠️ | **✅ RECOMMENDED** |
+
+**Official Recommendation**: **Option D - Auto-Pilot Assisted**
+
+---
+
+## Critical Success Factors
+
+### 1. Data Quality First
+
+Auto-Pilot's quality scoring (0-100) provides immediate feedback:
+- **Grade A (90-100)**: Excellent - proceed with confidence
+- **Grade B (70-89)**: Good - minor issues to address
+- **Grade C (50-69)**: Acceptable - significant issues
+- **Grade D (<50)**: Poor - major data quality problems
+
+### 2. Iterative Refinement
+
+Don't expect perfection on first run:
+1. Run Auto-Pilot → Get baseline config
+2. Test import → Identify gaps
+3. Refine config → Add specific mappings
+4. Repeat until satisfied
+
+### 3. Leverage Automation
+
+Auto-Pilot eliminates 80-90% of manual work:
+- Focus time on business logic, not ETL plumbing
+- Let Auto-Pilot handle routine mappings
+- Manual effort only for wareflow-specific needs
+
+---
+
+## Next Steps - Immediate Actions
+
+### This Week
+
+1. **Install excel-to-sql 0.3.0**
+   ```bash
+   pip install excel-to-sql==0.3.0
+   ```
+
+2. **Test Auto-Pilot on sample data**
+   ```bash
+   excel-to-sql magic --data ./data --dry-run
+   ```
+
+3. **Document findings**
+   - Create `docs/autopilot-analysis.md`
+   - Record detected patterns
+   - Note manual adjustments needed
+
+### Following Weeks
+
+4. **Implement import command** (3-4 days)
+5. **Implement analyze command** (2-3 days)
+6. **Implement export command** (3-4 days)
+7. **Implement run command** (1-2 days)
+8. **Complete testing & documentation** (2-3 days)
+
+---
+
+## Updated Architecture
 
 ```
 wareflow-analysis/
