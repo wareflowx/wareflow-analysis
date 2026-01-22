@@ -38,7 +38,10 @@ class SchemaParser:
         r"CREATE\s+TABLE\s+(\w+)\s*\((.*?)\);", re.IGNORECASE | re.DOTALL
     )
     COLUMN_PATTERN = re.compile(r"(\w+)\s+(INTEGER|TEXT|REAL|DATETIME|NUMERIC)", re.IGNORECASE)
+    # Pattern 1: PRIMARY KEY (column_name) at end of table definition
     PRIMARY_KEY_PATTERN = re.compile(r"PRIMARY\s+KEY\s*\((\w+)\)", re.IGNORECASE)
+    # Pattern 2: inline PRIMARY KEY with column definition
+    PRIMARY_KEY_INLINE_PATTERN = re.compile(r"(\w+)\s+(?:INTEGER|TEXT|REAL|DATETIME)\s+PRIMARY\s+KEY", re.IGNORECASE)
     FOREIGN_KEY_PATTERN = re.compile(
         r"FOREIGN\s+KEY\s*\((\w+)\)\s+REFERENCES\s+(\w+)\((\w+)\)", re.IGNORECASE
     )
@@ -80,7 +83,22 @@ class SchemaParser:
 
             # Find primary key
             pk_match = self.PRIMARY_KEY_PATTERN.search(columns_def)
+
+            # If not found, try inline pattern (column_name TYPE PRIMARY KEY)
+            if not pk_match:
+                # Check each column definition for inline PRIMARY KEY
+                for col_match in self.COLUMN_PATTERN.finditer(columns_def):
+                    col_def = columns_def[col_match.start():col_match.end()]
+                    if "PRIMARY KEY" in col_def.upper():
+                        pk_match = col_match
+                        break
+
             primary_key = pk_match.group(1) if pk_match else None
+            if pk_match and isinstance(pk_match, str):
+                primary_key = pk_match
+            elif pk_match:
+                # It's a Match object, get group(1)
+                primary_key = pk_match.group(1) if hasattr(pk_match, 'group') else None
 
             # Find foreign keys
             foreign_keys = []
