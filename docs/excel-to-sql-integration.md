@@ -577,7 +577,150 @@ validation_rules:
 
 ---
 
-## Examples
+## ✨ NEW: Auto-Pilot Mode Examples (excel-to-sql 0.3.0+)
+
+### Example 0a: Auto-Pilot Dry-Run (Recommended First Step)
+
+**Purpose**: Analyze Excel files before importing to understand data structure
+
+```bash
+# Analyze without importing
+excel-to-sql magic --data ./data --dry-run
+
+# Example output:
+# 🔍 Auto-Pilot Analysis Complete
+#
+# 📊 Files Analyzed: 3
+#
+# ✅ produits.xlsx
+#    Rows: 1,234
+#    Primary Key: no_produit (detected)
+#    Quality Score: 92/100 (Grade A)
+#    Issues: 2 (null descriptions, inactive without end date)
+#
+# ✅ mouvements.xlsx
+#    Rows: 45,678
+#    Primary Key: oid (detected)
+#    Quality Score: 78/100 (Grade B)
+#    Issues: 5 (unknown refs, future dates, negative quantities)
+#    Mappings Detected: 4 (ENTRÉE→inbound, SORTIE→outbound, etc.)
+#    Split Fields: 1 (date_heure_2 + date_heure → date_heure_clean)
+#
+# ✅ commandes.xlsx
+#    Rows: 789
+#    Primary Key: commande (detected)
+#    Quality Score: 95/100 (Grade A)
+#    Mappings Detected: 3 (EN_COURS→pending, etc.)
+#
+# 💡 Recommendations: 7 HIGH, 3 MEDIUM, 2 LOW
+```
+
+### Example 0b: Auto-Pilot Interactive Mode
+
+**Purpose**: Guided step-by-step configuration with user approval
+
+```bash
+# Interactive guided wizard
+excel-to-sql magic --data ./data --interactive
+
+# Example wizard flow:
+#
+# ╔═══════════════════════════════════════════════════════════╗
+# ║ 👋 Welcome to Auto-Pilot Mode!                            ║
+# ║                                                          ║
+# ║ This will analyze your Excel files and generate a          ║
+# ║ configuration automatically.                               ║
+# ║                                                          ║
+# ║ Files found: 3                                          ║
+# #   - produits.xlsx (1,234 rows)                             ║
+# #   - mouvements.xlsx (45,678 rows)                           ║
+# #   - commandes.xlsx (789 rows)                               ║
+# ║                                                          ║
+# ║ Ready to begin? [Y/n]: Y                                   ║
+# ╚═══════════════════════════════════════════════════════════╝
+#
+# Processing 1/3: produits.xlsx...
+# ✓ Primary key detected: no_produit
+# ✓ Columns detected: 9
+# ✓ Quality score: 92/100 (Grade A)
+#
+# ╔═══════════════════════════════════════════════════════════╗
+# ║ 💡 Recommendations for produits.xlsx                     ║
+# ║                                                          ║
+# ║ [1] HIGH: Add default value for null descriptions           ║
+# #     Fix: Set to "No description"                           ║
+#     Apply? [y/N]: y                                         ║
+# ║                                                          ║
+# ║ [2] MEDIUM: 45 products have null status                ║
+# #     Fix: Set to "UNKNOWN"                                  ║
+#     Apply? [y/N]: n                                         ║
+# ╚═══════════════════════════════════════════════════════════╝
+#
+# Processing 2/3: mouvements.xlsx...
+# ✓ Primary key detected: oid
+# ✓ Foreign key detected: no_produit → produits.no_produit
+# ✓ Value mappings detected: 4
+#     ENTRÉE → inbound
+#     SORTIE → outbound
+#     TRANSFERT → transfer
+#     AJUSTEMENT → adjustment
+# ✓ Calculated column suggested: date_heure_clean
+#     Expression: COALESCE(date_heure_2, date_heure)
+# ✓ Quality score: 78/100 (Grade B)
+#
+# ╔═══════════════════════════════════════════════════════════╗
+# ║ 💡 Recommendations for mouvements.xlsx                   ║
+# ║                                                          ║
+# ║ [1] HIGH: 234 unknown product references               ║
+# #     Fix: Remove invalid rows or add products            ║
+#     Apply? [y/N]: y                                         ║
+# ║                                                          ║
+# ║ [2] MEDIUM: 12 negative quantities                     ║
+# #     Fix: Set to 0                                           ║
+#     Apply? [y/N]: y                                         ║
+# ╚═══════════════════════════════════════════════════════════╝
+#
+# Processing 3/3: commandes.xlsx...
+# ✓ Primary key detected: commande
+# ✓ Value mappings detected: 3
+#     EN_COURS → pending
+#     TERMINÉ → completed
+#     ANNULÉ → cancelled
+# ✓ Split fields detected: etat_superieur, etat_inferieur
+# ✓ Suggested combination: etat_combine = COALESCE(etat_superieur, etat_inferieur, etat)
+# ✓ Quality score: 95/100 (Grade A)
+#
+# Configuration generated: excel-to-sql-config.yaml
+# Review and adjust, then run: excel-to-sql magic --data ./data
+```
+
+### Example 0c: Auto-Pilot Automatic Mode
+
+**Purpose**: Generate config and import in one step
+
+```bash
+# Automatic mode - analyze, generate config, and import
+excel-to-sql magic --data ./data
+
+# Output:
+# 🔍 Analyzing files...
+# ✅ Configuration generated
+# 📥 Importing data...
+# ✓ produits: 1,234 rows imported
+# ✓ mouvements: 45,678 rows imported
+# ✓ commandes: 789 rows imported
+#
+# ✅ Complete! Database created: warehouse.db
+#
+# 💡 Next steps:
+#   - Review: excel-to-sql-config.yaml
+#   - Analyze: excel-to-sql profile --table mouvements
+#   - Export: excel-to-sql export --db warehouse.db
+```
+
+---
+
+## Traditional Examples (Still Valid)
 
 ### Example 1: Basic Import
 
@@ -848,17 +991,83 @@ If you started implementing custom import logic before discovering excel-to-sql:
 
 ---
 
-## Version Compatibility
+## Version Compatibility & Auto-Pilot
 
 ### excel-to-sql Versions
 
-| Version | Features Used by wareflow | Status |
-|---------|----------------------------|--------|
-| 0.1.x | Basic import/export | ❌ Too limited |
-| **0.2.0** | All required features | ✅ **Recommended** |
-| 0.3.x+ | Future enhancements | ✅ Compatible |
+| Version | Auto-Pilot | Features Used by wareflow | Status |
+|---------|------------|----------------------------|--------|
+| 0.1.x | ❌ No | Basic import/export only | ❌ Too limited |
+| 0.2.0 | ❌ No | Value mapping, calculated columns, validators | ✅ Workable but manual config |
+| **0.3.0+** | ✅ **YES** | All features + **Auto-Pilot Mode** | ✅ **RECOMMENDED** |
 
-**Minimum required version**: excel-to-sql >= 0.2.0
+### Why Upgrade to 0.3.0?
+
+**Auto-Pilot Mode Benefits**:
+- ⚡ **5-minute setup** vs hours/days of manual configuration
+- 🎯 **Zero configuration** - detects everything automatically
+- 🔍 **Quality scoring** - identify issues before importing
+- 🇫🇷 **French code detection** - 11 common WMS mappings
+- 📊 **Data profiling** - understand your data before importing
+
+**Upgrade Path**:
+```bash
+# Check current version
+excel-to-sql --version
+
+# Upgrade to latest
+pip install --upgrade excel-to-sql==0.3.0
+
+# Or with uv
+uv pip install excel-to-sql==0.3.0
+```
+
+**Breaking Changes**: None! Auto-Pilot is completely additive - all existing configurations continue to work.
+
+---
+
+## Migration: From 0.2.x to 0.3.0
+
+### For New Projects
+
+Simply use Auto-Pilot Mode from the start:
+
+```bash
+# New project with Auto-Pilot
+wareflow init my-warehouse
+cd my-warehouse
+
+# Place Excel files in data/
+cp /path/to/*.xlsx data/
+
+# Run Auto-Pilot dry-run
+excel-to-sql magic --data ./data --dry-run
+
+# Import with wareflow
+wareflow import
+```
+
+### For Existing Projects
+
+**Option 1: Continue with manual config** (no changes needed)
+- Your existing configuration still works
+- Manually update if needed
+
+**Option 2: Adopt Auto-Pilot** (recommended)
+```bash
+# Test Auto-Pilot on existing data
+excel-to-sql magic --data ./data --dry-run
+
+# Compare with current config
+diff excel-to-sql-config.yaml config.yaml
+
+# If satisfied, switch to Auto-Pilot generated config
+```
+
+**Option 3: Hybrid approach**
+- Use Auto-Pilot to detect patterns
+- Keep manual refinements in `config_refiner.py`
+- Merge both approaches
 
 ---
 
