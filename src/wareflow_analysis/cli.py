@@ -4,7 +4,7 @@ from pathlib import Path
 import typer
 
 from wareflow_analysis.init import initialize_project
-from wareflow_analysis.import.importer import (
+from wareflow_analysis.data_import.importer import (
     get_import_status,
     init_import_config,
     run_import,
@@ -32,7 +32,7 @@ def init(
         typer.echo("\nNext steps:")
         typer.echo(f"  cd {project_name}")
         typer.echo("  # Place your Excel files in data/ directory")
-        typer.echo("  wareflow import")
+        typer.echo("  wareflow import-data --init")
     else:
         typer.echo(f"Error: {message}", err=True)
         raise typer.Exit(1)
@@ -56,9 +56,9 @@ def import_data(
     """Import data from Excel files to SQLite using Auto-Pilot Mode.
 
     Examples:
-        wareflow import --init        # Generate configuration first
-        wareflow import               # Import using existing configuration
-        wareflow import --quiet       # Import with minimal output
+        wareflow import-data --init        # Generate configuration first
+        wareflow import-data               # Import using existing configuration
+        wareflow import-data --quiet       # Import with minimal output
     """
     # Check we're in a wareflow project
     project_dir = Path.cwd()

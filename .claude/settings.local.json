@@ -13,7 +13,11 @@
       "Bash(gh label list:*)",
       "Bash(gh issue create:*)",
       "Bash(gh issue edit:*)",
-      "Bash(gh issue comment:*)"
+      "Bash(gh issue comment:*)",
+      "Bash(gh issue list:*)",
+      "Bash(gh issue view:*)",
+      "Bash(git checkout:*)",
+      "Bash(python:*)"
     ]
   }
 }

@@ -1,22 +1,16 @@
 """Importer module for wareflow-analysis.
 
-This module wraps excel-to-sql SDK to perform data import with progress reporting.
+This module provides direct import functionality using pandas and sqlite3.
 """
 
 from pathlib import Path
 from typing import Any, Dict, Tuple
 import time
-
-try:
-    from excel_to_sql import ExcelToSqlite
-except ImportError:
-    raise ImportError(
-        "excel-to-sql>=0.3.0 is required. "
-        "Install it with: pip install excel-to-sql>=0.3.0"
-    )
+import sqlite3
+import pandas as pd
 
 
-from wareflow_analysis.import.config_refiner import (
+from wareflow_analysis.data_import.config_refiner import (
     load_existing_config,
     validate_config,
 )
@@ -26,7 +20,7 @@ def run_import(
     project_dir: Path,
     verbose: bool = True,
 ) -> Tuple[bool, str]:
-    """Execute import using excel-to-sql SDK.
+    """Execute import using pandas and sqlite3.
 
     Args:
         project_dir: Path to wareflow project directory
@@ -39,7 +33,7 @@ def run_import(
     config = load_existing_config(project_dir)
 
     if not config:
-        return False, "No configuration found. Run 'wareflow import --init' first."
+        return False, "No configuration found. Run 'wareflow import-data --init' first."
 
     # Validate configuration
     is_valid, error_msg = validate_config(config)
@@ -56,8 +50,8 @@ def run_import(
             print(f"\nDatabase: {db_path}")
             print(f"Processing {len(config['mappings'])} import(s)...\n")
 
-        # Initialize SDK
-        sdk = ExcelToSqlite(db_path=str(db_path))
+        # Connect to database
+        conn = sqlite3.connect(db_path)
 
         # Import each mapping
         results = []
@@ -66,28 +60,39 @@ def run_import(
 
         for table_name, mapping_config in config["mappings"].items():
             if verbose:
-                print(f"  → {table_name}...", end=" ", flush=True)
+                print(f"  -> {table_name}...", end=" ", flush=True)
 
             try:
-                result = sdk.import_excel(
-                    file_path=mapping_config["source"],
-                    type_name=table_name,
-                    tags=["wareflow-import"],
+                # Read Excel file
+                df = pd.read_excel(mapping_config["source"])
+
+                # Apply value mappings if configured
+                if "value_mappings" in mapping_config:
+                    for col, mappings in mapping_config["value_mappings"].items():
+                        if col in df.columns:
+                            df[col] = df[col].map(mappings).fillna(df[col])
+
+                # Import to database
+                rows_imported = df.to_sql(
+                    table_name, conn, if_exists="replace", index=False
                 )
 
-                rows_imported = result.get("rows_imported", 0)
                 total_rows += rows_imported
                 results.append((table_name, True, rows_imported))
 
                 if verbose:
-                    print(f"✅ {rows_imported:,} rows")
+                    print(f"[OK] {rows_imported:,} rows")
 
             except Exception as e:
                 error_msg = str(e)
                 results.append((table_name, False, error_msg))
 
                 if verbose:
-                    print(f"❌ Error: {error_msg}")
+                    print(f"[ERROR] Error: {error_msg}")
+
+        # Commit and close
+        conn.commit()
+        conn.close()
 
         # Generate summary
         duration = time.time() - start_time
@@ -105,7 +110,7 @@ def run_import(
             # Show errors if any
             failed = [r for r in results if not r[1]]
             if failed:
-                print("\n⚠️  Failed imports:")
+                print("\n[!]  Failed imports:")
                 for table_name, _, error in failed:
                     print(f"  - {table_name}: {error}")
 
@@ -149,25 +154,25 @@ def init_import_config(
             print(f"\nAnalyzing Excel files in: {data_dir}\n")
 
         # Import here to avoid issues if excel-to-sql is not installed
-        from wareflow_analysis.import.autopilot import generate_autopilot_config
-        from wareflow_analysis.import.config_refiner import refine_config
+        from wareflow_analysis.data_import.autopilot import generate_autopilot_config
+        from wareflow_analysis.data_import.config_refiner import refine_config
 
         # Generate Auto-Pilot configuration
         config = generate_autopilot_config(data_dir)
 
         if verbose:
-            print(f"✅ Analyzed {config['summary']['total_files']} file(s)")
-            print(f"✅ Total rows: {config['summary']['total_rows']:,}")
-            print(f"✅ Tables: {', '.join(config['summary']['tables'])}\n")
+            print(f"[OK] Analyzed {config['summary']['total_files']} file(s)")
+            print(f"[OK] Total rows: {config['summary']['total_rows']:,}")
+            print(f"[OK] Tables: {', '.join(config['summary']['tables'])}\n")
 
         # Refine with wareflow-specific logic
         refined_config = refine_config(config, project_dir)
 
         if verbose:
-            print("✅ Configuration generated: excel-to-sql-config.yaml")
+            print("[OK] Configuration generated: excel-to-sql-config.yaml")
             print("\nNext steps:")
             print("  1. Review the configuration file")
-            print("  2. Run 'wareflow import' to import data")
+            print("  2. Run 'wareflow import-data' to import data")
             print("\n" + "=" * 60)
 
         return True, "Configuration generated successfully"
@@ -196,26 +201,27 @@ def get_import_status(project_dir: Path) -> Dict[str, Any]:
         }
 
     try:
-        sdk = ExcelToSqlite(db_path=str(db_path))
+        conn = sqlite3.connect(db_path)
+        cursor = conn.cursor()
 
         # Get list of tables
-        tables_query = """
-            SELECT name FROM sqlite_master
-            WHERE type='table' AND name NOT LIKE 'sqlite_%'
-            ORDER BY name
-        """
-        tables_df = sdk.query(tables_query)
+        cursor.execute(
+            "SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%' ORDER BY name"
+        )
+        tables = [row[0] for row in cursor.fetchall()]
 
-        tables = {}
-        for table_name in tables_df["name"]:
-            count_query = f"SELECT COUNT(*) as count FROM '{table_name}'"
-            count_df = sdk.query(count_query)
-            tables[table_name] = count_df.iloc[0]["count"]
+        # Get row counts
+        table_counts = {}
+        for table in tables:
+            cursor.execute(f"SELECT COUNT(*) FROM '{table}'")
+            table_counts[table] = cursor.fetchone()[0]
+
+        conn.close()
 
         return {
             "database_exists": True,
             "database_path": str(db_path),
-            "tables": tables,
+            "tables": table_counts,
         }
 
     except Exception as e:

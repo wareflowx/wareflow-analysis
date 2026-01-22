@@ -9,7 +9,7 @@ from typing import Any, Dict
 import pandas as pd
 
 try:
-    from excel_to_sql.auto_pilot import PatternDetector, QualityScorer
+    from excel_to_sql.auto_pilot import PatternDetector
     from excel_to_sql import ExcelToSqlite
 except ImportError:
     raise ImportError(
@@ -44,7 +44,7 @@ def analyze_excel_file(file_path: Path) -> Dict[str, Any]:
         file_path: Path to Excel file
 
     Returns:
-        Dictionary with analysis results including patterns and quality report
+        Dictionary with analysis results including patterns
     """
     # Read Excel file
     try:
@@ -58,21 +58,16 @@ def analyze_excel_file(file_path: Path) -> Dict[str, Any]:
     # Generate table name from filename
     table_name = file_path.stem.lower().replace(" ", "_").replace("-", "_")
 
-    # Detect patterns
+    # Detect patterns using PatternDetector
     detector = PatternDetector()
     patterns = detector.detect_patterns(df, table_name)
-
-    # Generate quality report
-    scorer = QualityScorer()
-    quality_report = scorer.generate_quality_report(df, table_name)
 
     return {
         "file_path": str(file_path),
         "table_name": table_name,
         "rows": len(df),
-        "columns": len(df.columns),
+        "columns": list(df.columns),
         "patterns": patterns,
-        "quality_report": quality_report,
     }
 
 
@@ -125,7 +120,6 @@ def generate_autopilot_config(
     for analysis in analyses:
         table_name = analysis["table_name"]
         patterns = analysis["patterns"]
-        quality = analysis["quality_report"]
 
         # Build mapping configuration
         mapping_config = {
@@ -151,8 +145,8 @@ def generate_autopilot_config(
             for split_field in patterns["split_fields"]:
                 calculated_columns.append(
                     {
-                        "name": split_field["combined_name"],
-                        "expression": split_field["expression"],
+                        "name": split_field.get("combined_name", "combined"),
+                        "expression": split_field.get("expression", ""),
                     }
                 )
             mapping_config["calculated_columns"] = calculated_columns
@@ -172,34 +166,3 @@ def generate_autopilot_config(
         print(f"Configuration saved to: {output_path}")
 
     return config
-
-
-def display_quality_report(quality_report: Dict[str, Any]):
-    """Display formatted quality report to user.
-
-    Args:
-        quality_report: Quality report from QualityScorer
-    """
-    print("\n" + "=" * 60)
-    print("DATA QUALITY REPORT")
-    print("=" * 60)
-
-    summary = quality_report.get("summary", {})
-    print(f"\nOverall Score: {summary.get('quality_score', 'N/A')}/100")
-    print(f"Grade: {summary.get('grade', 'N/A')}")
-
-    if "tables" in quality_report:
-        for table_name, table_report in quality_report["tables"].items():
-            print(f"\n{table_name}:")
-            print(f"  Score: {table_report.get('score', 'N/A')}/100")
-            print(f"  Grade: {table_report.get('grade', 'N/A')}")
-
-            issues = table_report.get("issues", [])
-            if issues:
-                print(f"  Issues:")
-                for issue in issues[:10]:  # Limit to first 10 issues
-                    print(f"    ⚠️  {issue}")
-                if len(issues) > 10:
-                    print(f"    ... and {len(issues) - 10} more")
-
-    print("\n" + "=" * 60)
