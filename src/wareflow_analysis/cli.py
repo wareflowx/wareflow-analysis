@@ -9,6 +9,8 @@ from wareflow_analysis.data_import.importer import (
     init_import_config,
     run_import,
 )
+from wareflow_analysis.validation.validator import Validator
+from wareflow_analysis.validation.reporters import ValidationReporter
 
 app = typer.Typer(
     name="wareflow",
@@ -145,6 +147,51 @@ def status() -> None:
                 typer.echo(f"\nError reading database: {status_info['error']}")
 
     typer.echo("\n" + "=" * 50)
+
+
+@app.command()
+def validate(
+    strict: bool = typer.Option(
+        False,
+        "--strict",
+        "-s",
+        help="Treat warnings as errors",
+    ),
+) -> None:
+    """Validate Excel files before import.
+
+    Performs comprehensive validation of Excel files in the data/ directory,
+    checking for missing columns, duplicate primary keys, data type mismatches,
+    null values, and more.
+
+    Examples:
+        wareflow validate                 # Validate all files
+        wareflow validate --strict       # Fail on warnings too
+    """
+    # Check we're in a wareflow project
+    project_dir = Path.cwd()
+    config_file = project_dir / "config.yaml"
+
+    if not config_file.exists():
+        typer.echo(
+            "Error: Not in a wareflow project directory. "
+            "Run 'wareflow init' first.",
+            err=True,
+        )
+        raise typer.Exit(1)
+
+    # Run validation
+    validator = Validator(project_dir)
+    reporter = ValidationReporter(verbose=True)
+
+    result = validator.validate_project(strict=strict)
+
+    # Print results
+    reporter.print_result(result)
+
+    # Exit with error code if validation failed
+    if not result.success:
+        raise typer.Exit(1)
 
 
 def cli() -> None:
