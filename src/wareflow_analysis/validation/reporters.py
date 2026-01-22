@@ -69,7 +69,7 @@ class ValidationReporter:
         for file_result in result.file_results:
             if file_result.total_issues > 0:
                 print(
-                    f"\n{file_result.file_path.name}: {file_result.errors_count} errors, {file_result.warnings_count} warnings"
+                    f"\n{file_result.file_path.name}: {len(file_result.errors)} errors, {len(file_result.warnings)} warnings"
                 )
 
         print("\n" + "-" * 60)
