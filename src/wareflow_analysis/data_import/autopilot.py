@@ -8,6 +8,8 @@ from pathlib import Path
 from typing import Any, Dict
 import pandas as pd
 
+from wareflow_analysis.data_import.header_detector import HeaderDetector
+
 try:
     from excel_to_sql.auto_pilot import PatternDetector
     from excel_to_sql import ExcelToSqlite
@@ -46,9 +48,10 @@ def analyze_excel_file(file_path: Path) -> Dict[str, Any]:
     Returns:
         Dictionary with analysis results including patterns
     """
-    # Read Excel file
+    # Read Excel file with automatic header detection
     try:
-        df = pd.read_excel(file_path)
+        detector = HeaderDetector()
+        df = detector.read_excel_with_header_detection(file_path, normalize_columns=False)
     except Exception as e:
         raise ValueError(f"Failed to read {file_path}: {e}")
 
