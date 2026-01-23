@@ -23,17 +23,23 @@ app = typer.Typer(
 @app.command()
 def init(
     project_name: str = typer.Argument(
-        ...,
-        help="Name of the project to create",
+        None,
+        show_default="current directory",
+        help="Name of the project to create (optional, initializes in current directory if not provided)",
     ),
 ) -> None:
-    """Initialize a new Wareflow analysis project."""
+    """Initialize a new Wareflow analysis project.
+
+    If PROJECT_NAME is omitted, initializes the project in the current directory.
+    Use 'wareflow init .' to explicitly initialize in current directory.
+    """
     success, message = initialize_project(project_name)
 
     if success:
         typer.echo(message)
         typer.echo("\nNext steps:")
-        typer.echo(f"  cd {project_name}")
+        if project_name and project_name != ".":
+            typer.echo(f"  cd {project_name}")
         typer.echo("  # Place your Excel files in data/ directory")
         typer.echo("  wareflow import-data --init")
     else:

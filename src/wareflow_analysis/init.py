@@ -10,11 +10,15 @@ def validate_project_name(project_name: str) -> tuple[bool, str]:
     """Validate project name.
 
     Args:
-        project_name: Name to validate
+        project_name: Name to validate (or "." for current directory)
 
     Returns:
         Tuple of (is_valid, error_message)
     """
+    # Allow "." as special case for current directory
+    if project_name == ".":
+        return True, ""
+
     if not project_name:
         return False, "Project name cannot be empty"
 
@@ -93,30 +97,47 @@ def create_gitkeep_files(project_path: Path) -> None:
     (project_path / "output" / ".gitkeep").touch()
 
 
-def initialize_project(project_name: str, base_dir: Path | None = None) -> tuple[bool, str]:
+def initialize_project(project_name: str | None, base_dir: Path | None = None) -> tuple[bool, str]:
     """Initialize a new Wareflow project.
 
     Args:
-        project_name: Name of the project to create
+        project_name: Name of the project to create, or "." for current directory
         base_dir: Base directory for project creation (defaults to cwd)
 
     Returns:
         Tuple of (success, message)
     """
+    # Handle None as "."
+    if project_name is None:
+        project_name = "."
+
     # Validate project name
     is_valid, error_msg = validate_project_name(project_name)
     if not is_valid:
         return False, error_msg
 
-    # Check if directory already exists
+    # Determine project path
     base = base_dir if base_dir is not None else Path.cwd()
-    project_path = base / project_name
-    if project_path.exists():
+
+    # If "." is specified, use current directory
+    if project_name == ".":
+        project_path = base
+    else:
+        project_path = base / project_name
+
+    # Check if directory already exists (only for named projects, not current dir)
+    if project_name != "." and project_path.exists():
         return False, f"Directory '{project_name}' already exists"
 
     try:
-        # Create project structure
-        create_project_structure(project_path)
+        # Create project structure (only create parent dirs for named projects)
+        if project_name != ".":
+            create_project_structure(project_path)
+        else:
+            # For current directory, create subdirs directly
+            (project_path / "data").mkdir(exist_ok=True)
+            (project_path / "output").mkdir(exist_ok=True)
+            (project_path / "scripts").mkdir(exist_ok=True)
 
         # Copy template files
         copy_templates(project_path)
@@ -127,7 +148,10 @@ def initialize_project(project_name: str, base_dir: Path | None = None) -> tuple
         # Create .gitkeep files
         create_gitkeep_files(project_path)
 
-        return True, f"Project '{project_name}' created successfully!"
+        if project_name == ".":
+            return True, "Project initialized in current directory!"
+        else:
+            return True, f"Project '{project_name}' created successfully!"
     except PermissionError:
         return False, "Permission denied: Cannot create project directory"
     except Exception as e:
