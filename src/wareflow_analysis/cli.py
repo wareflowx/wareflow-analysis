@@ -14,6 +14,7 @@ from wareflow_analysis.validation.reporters import ValidationReporter
 from wareflow_analysis.analyze.abc import ABCAnalysis
 from wareflow_analysis.analyze.inventory import InventoryAnalysis
 from wareflow_analysis.export.reports.inventory_report import InventoryReportExporter
+from wareflow_analysis.export.reports.abc_report import ABCReportExporter
 from wareflow_analysis.database.manager import DatabaseManager
 
 app = typer.Typer(
@@ -206,7 +207,7 @@ def export(
         "inventory",
         "--analysis",
         "-a",
-        help="Analysis to export (inventory only for now)",
+        help="Analysis to export (inventory or abc)",
     ),
     output: str = typer.Option(
         None,
@@ -227,6 +228,7 @@ def export(
 
     Examples:
         wareflow export                          # Export inventory with auto filename
+        wareflow export --analysis abc           # Export ABC classification
         wareflow export --output report.xlsx     # Custom filename
         wareflow export --dir reports/           # Custom directory
     """
@@ -293,9 +295,48 @@ def export(
         except Exception as e:
             typer.echo(f"Error: Export failed - {e}", err=True)
             raise typer.Exit(1)
+    elif analysis == "abc":
+        typer.echo("\nRunning ABC Classification Analysis...")
+
+        # Run analysis
+        analyzer = ABCAnalysis(db_path)
+        success, message = analyzer.connect()
+
+        if not success:
+            typer.echo(f"Error: {message}", err=True)
+            raise typer.Exit(1)
+
+        try:
+            results = analyzer.run(days=90)
+            analyzer.close()
+        except Exception as e:
+            analyzer.close()
+            typer.echo(f"Error: Analysis failed - {e}", err=True)
+            raise typer.Exit(1)
+
+        # Generate output filename if not provided
+        if output is None:
+            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+            output = f"abc_report_{timestamp}.xlsx"
+
+        # Create output directory if it doesn't exist
+        output_dir = project_dir / dir
+        output_dir.mkdir(parents=True, exist_ok=True)
+
+        output_path = output_dir / output
+
+        # Export to Excel
+        typer.echo(f"Exporting to {output_path}...")
+        try:
+            exporter = ABCReportExporter()
+            exporter.export(results, output_path)
+            typer.echo(f"\n[OK] Report exported successfully: {output_path}")
+        except Exception as e:
+            typer.echo(f"Error: Export failed - {e}", err=True)
+            raise typer.Exit(1)
     else:
         typer.echo(
-            f"Error: Unknown analysis '{analysis}'. Only 'inventory' is supported for now.",
+            f"Error: Unknown analysis '{analysis}'. Available: inventory, abc",
             err=True,
         )
         raise typer.Exit(1)
