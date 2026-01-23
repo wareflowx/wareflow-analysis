@@ -12,6 +12,7 @@ from wareflow_analysis.data_import.importer import (
 from wareflow_analysis.validation.validator import Validator
 from wareflow_analysis.validation.reporters import ValidationReporter
 from wareflow_analysis.analyze.abc import ABCAnalysis
+from wareflow_analysis.analyze.inventory import InventoryAnalysis
 
 app = typer.Typer(
     name="wareflow",
@@ -123,11 +124,13 @@ def analyze(
     Performs analytics on imported warehouse data to generate insights.
     Currently supported analyses:
       - abc: ABC classification (Pareto analysis)
+      - inventory: Product catalog statistics
 
     Examples:
-        wareflow analyze                 # Run ABC analysis (default)
-        wareflow analyze --name abc      # Explicit ABC analysis
-        wareflow analyze --days 60       # 60-day lookback period
+        wareflow analyze                    # Run ABC analysis (default)
+        wareflow analyze --name abc         # Explicit ABC analysis
+        wareflow analyze --name inventory   # Inventory analysis
+        wareflow analyze --days 60          # 60-day lookback period
     """
     # Check we're in a wareflow project
     project_dir = Path.cwd()
@@ -169,9 +172,27 @@ def analyze(
             analyzer.close()
             typer.echo(f"Error: Analysis failed - {e}", err=True)
             raise typer.Exit(1)
+    elif name == "inventory":
+        analyzer = InventoryAnalysis(db_path)
+        success, message = analyzer.connect()
+
+        if not success:
+            typer.echo(f"Error: {message}", err=True)
+            raise typer.Exit(1)
+
+        try:
+            typer.echo("\nRunning Inventory Analysis...")
+            results = analyzer.run()
+            output = analyzer.format_output(results)
+            typer.echo(output)
+            analyzer.close()
+        except Exception as e:
+            analyzer.close()
+            typer.echo(f"Error: Analysis failed - {e}", err=True)
+            raise typer.Exit(1)
     else:
         typer.echo(
-            f"Error: Unknown analysis '{name}'. Available: abc",
+            f"Error: Unknown analysis '{name}'. Available: abc, inventory",
             err=True,
         )
         raise typer.Exit(1)
