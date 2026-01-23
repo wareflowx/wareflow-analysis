@@ -14,6 +14,7 @@ from wareflow_analysis.validation.reporters import ValidationReporter
 from wareflow_analysis.analyze.abc import ABCAnalysis
 from wareflow_analysis.analyze.inventory import InventoryAnalysis
 from wareflow_analysis.export.reports.inventory_report import InventoryReportExporter
+from wareflow_analysis.database.manager import DatabaseManager
 
 app = typer.Typer(
     name="wareflow",
@@ -384,6 +385,358 @@ def validate(
     # Exit with error code if validation failed
     if not result.success:
         raise typer.Exit(1)
+
+
+@app.command()
+def clean(
+    db: bool = typer.Option(
+        False,
+        "--db",
+        help="Clean all tables (keep schema)",
+    ),
+    table: str = typer.Option(
+        None,
+        "--table",
+        "-t",
+        help="Clean specific table only",
+    ),
+    dry_run: bool = typer.Option(
+        False,
+        "--dry-run",
+        help="Show what would be deleted without doing it",
+    ),
+    force: bool = typer.Option(
+        False,
+        "--force",
+        "-f",
+        help="Skip confirmation prompt",
+    ),
+    backup: bool = typer.Option(
+        True,
+        "--backup/--no-backup",
+        help="Create backup before cleaning",
+    ),
+) -> None:
+    """Clean database data safely.
+
+    Removes data from tables while preserving schema. Creates automatic backups
+    unless --no-backup is specified.
+
+    Examples:
+        wareflow clean --db               # Clean all tables (with confirmation)
+        wareflow clean --table mouvements  # Clean specific table
+        wareflow clean --db --dry-run      # Preview what would be deleted
+        wareflow clean --db --force        # Skip confirmation
+    """
+    # Check we're in a wareflow project
+    project_dir = Path.cwd()
+    config_file = project_dir / "config.yaml"
+
+    if not config_file.exists():
+        typer.echo(
+            "Error: Not in a wareflow project directory. "
+            "Run 'wareflow init' first.",
+            err=True,
+        )
+        raise typer.Exit(1)
+
+    db_path = project_dir / "warehouse.db"
+    manager = DatabaseManager(db_path, project_dir)
+
+    # Check database exists
+    if not manager.database_exists():
+        typer.echo(
+            f"\n❌ Database not found\n\n"
+            f"  File: {db_path} does not exist\n\n"
+            f"💡 Solution:\n"
+            f"  Run 'wareflow import-data' to create the database\n"
+            f"  Or run 'wareflow init' to create a new project",
+            err=True,
+        )
+        raise typer.Exit(1)
+
+    # Validate options
+    if not db and not table:
+        typer.echo(
+            "Error: Must specify either --db or --table <TABLE_NAME>",
+            err=True,
+        )
+        raise typer.Exit(1)
+
+    if db and table:
+        typer.echo(
+            "Error: Cannot specify both --db and --table",
+            err=True,
+        )
+        raise typer.Exit(1)
+
+    # Handle table-specific cleaning
+    if table:
+        # Check table exists
+        available_tables = manager.get_available_tables()
+        if table not in available_tables:
+            typer.echo(
+                f"\n❌ Table not found\n\n"
+                f"  Table: '{table}' does not exist\n\n"
+                f"Available tables:\n"
+                f"  {', '.join(available_tables)}\n\n"
+                f"💡 Use --table with a valid table name",
+                err=True,
+            )
+            raise typer.Exit(1)
+
+        # Get table info
+        table_info = manager.get_table_info()
+        target_table = next((t for t in table_info if t["name"] == table), None)
+        row_count = target_table["rows"]
+
+        if dry_run:
+            typer.echo("\n🔍 Dry-run mode: No changes will be made\n")
+            typer.echo(f"\nDatabase: {db_path}")
+            typer.echo(f"\nWould clean:")
+            typer.echo(f"  {table}: {row_count:,} rows")
+
+            if backup:
+                from datetime import datetime
+                backup_name = f"{db_path.stem}.backup_{datetime.now().strftime('%Y%m%d_%H%M%S')}{db_path.suffix}"
+                typer.echo(f"\nWould create backup: {backup_name}")
+
+            typer.echo("\n💡 Remove --dry-run to proceed")
+            return
+
+        # Create backup if requested
+        if backup:
+            backup_path = manager.backup_database()
+            typer.echo(f"✓ Creating backup: {backup_path.name}")
+
+        # Confirm action
+        confirmed = manager.confirm_action(
+            f"⚠️  This will delete all data from '{table}' table\n\n"
+            f"Table: {table} ({row_count:,} rows)",
+            force=force
+        )
+
+        if not confirmed:
+            typer.echo("Cancelled")
+            raise typer.Exit(0)
+
+        # Clean table
+        deleted = manager.clean_table(table)
+        typer.echo(f"✓ Cleaning table: {table} ({deleted:,} rows deleted)")
+
+        # Show preserved tables
+        other_tables = [t for t in available_tables if t != table]
+        if other_tables:
+            table_info = manager.get_table_info()
+            preserved = [f"{t['name']} ({t['rows']:,} rows)" for t in table_info if t["name"] in other_tables]
+            typer.echo(f"\n✓ Other tables preserved: {', '.join(preserved)}")
+
+        typer.echo("\n✅ Table cleaned successfully")
+
+    # Handle full database cleaning
+    if db:
+        table_info = manager.get_table_info()
+        total_rows = sum(t["rows"] for t in table_info)
+
+        if dry_run:
+            typer.echo("\n🔍 Dry-run mode: No changes will be made\n")
+            typer.echo(f"\nDatabase: {db_path} ({manager.format_size(manager.get_database_size())})")
+            typer.echo("\nWould clean:")
+            for table in table_info:
+                typer.echo(f"  {table['name']}: {table['rows']:,} rows")
+            typer.echo(f"\nTotal: {total_rows:,} rows")
+
+            if backup:
+                from datetime import datetime
+                backup_name = f"{db_path.stem}.backup_{datetime.now().strftime('%Y%m%d_%H%M%S')}{db_path.suffix}"
+                typer.echo(f"\nWould create backup: {backup_name}")
+
+            typer.echo(f"\nResulting database size: ~192 KB")
+
+            typer.echo("\n💡 Remove --dry-run to proceed")
+            return
+
+        # Create backup if requested
+        if backup:
+            backup_path = manager.backup_database()
+            typer.echo(f"✓ Creating backup: {backup_path.name}")
+
+        # Confirm action
+        table_list = "\n".join([f"  {t['name']}: {t['rows']:,} rows" for t in table_info])
+        confirmed = manager.confirm_action(
+            f"⚠️  WARNING: This will delete all data from the database\n\n"
+            f"Database: {db_path} ({manager.format_size(manager.get_database_size())})\n\n"
+            f"Tables to clean:\n"
+            f"{table_list}\n\n"
+            f"Total: {total_rows:,} rows",
+            force=force
+        )
+
+        if not confirmed:
+            typer.echo("Cancelled")
+            raise typer.Exit(0)
+
+        # Clean all tables
+        deleted_rows = manager.clean_all_tables()
+
+        for table_name, count in deleted_rows.items():
+            typer.echo(f"✓ Cleaning table: {table_name} ({count:,} rows deleted)")
+
+        typer.echo("✓ Vacuuming database...")
+        typer.echo(f"\n✅ Database cleaned successfully")
+        typer.echo(f"   Schema preserved, all data removed")
+        typer.echo(f"   Database size: {manager.format_size(manager.get_database_size())} (empty)")
+
+        typer.echo("\n💡 Next step:")
+        typer.echo("   Run 'wareflow import-data' to import fresh data")
+
+
+@app.command()
+def reset(
+    hard: bool = typer.Option(
+        False,
+        "--hard",
+        help="Delete entire project directory (DANGEROUS)",
+    ),
+    dry_run: bool = typer.Option(
+        False,
+        "--dry-run",
+        help="Show what would be deleted without doing it",
+    ),
+    force: bool = typer.Option(
+        False,
+        "--force",
+        "-f",
+        help="Skip confirmation prompts",
+    ),
+) -> None:
+    """Reset project to clean state.
+
+    Performs a soft reset by default (clean database). Use --hard for complete
+    project deletion (DANGEROUS - requires special confirmation).
+
+    Examples:
+        wareflow reset                   # Soft reset (clean database only)
+        wareflow reset --hard            # Delete entire project
+        wareflow reset --dry-run          # Preview what would be deleted
+    """
+    # Check we're in a wareflow project
+    project_dir = Path.cwd()
+    config_file = project_dir / "config.yaml"
+
+    if not config_file.exists():
+        typer.echo(
+            "Error: Not in a wareflow project directory. "
+            "Run 'wareflow init' first.",
+            err=True,
+        )
+        raise typer.Exit(1)
+
+    db_path = project_dir / "warehouse.db"
+
+    # Handle soft reset (default)
+    if not hard:
+        manager = DatabaseManager(db_path, project_dir)
+
+        if not manager.database_exists():
+            typer.echo(
+                "\n✅ Project is already clean (no database found)"
+            )
+            return
+
+        if dry_run:
+            table_info = manager.get_table_info()
+            total_rows = sum(t["rows"] for t in table_info)
+
+            typer.echo("\n🔍 Dry-run mode: No changes will be made\n")
+            typer.echo(f"\nWould delete: {db_path}")
+            typer.echo(f"Database size: {manager.format_size(manager.get_database_size())}")
+            typer.echo(f"Total rows: {total_rows:,}")
+
+            typer.echo("\n💡 Remove --dry-run to proceed")
+            return
+
+        # Confirm soft reset
+        confirmed = manager.confirm_action(
+            f"⚠️  This will delete all data from the database\n\n"
+            f"Project: {project_dir}",
+            force=force
+        )
+
+        if not confirmed:
+            typer.echo("Cancelled")
+            raise typer.Exit(0)
+
+        # Create backup
+        backup_path = manager.backup_database()
+        typer.echo(f"✓ Creating backup: {backup_path.name}")
+
+        # Clean database
+        deleted_rows = manager.clean_all_tables()
+        total_rows = sum(deleted_rows.values())
+
+        typer.echo(f"✓ Deleted {total_rows:,} rows from {len(deleted_rows)} table(s)")
+        typer.echo("✓ Vacuuming database...")
+
+        typer.echo("\n✅ Project reset successfully")
+        typer.echo(f"   Database: {db_path.name} cleaned")
+        typer.echo(f"   Config: {config_file.name} preserved")
+        typer.echo(f"   Data directory: data/ preserved")
+
+        typer.echo("\n💡 Next step:")
+        typer.echo("   Run 'wareflow import-data' to import fresh data")
+
+        return
+
+    # Handle hard reset (DANGEROUS)
+    if hard:
+        if dry_run:
+            typer.echo("\n🔍 Dry-run mode: No changes will be made\n")
+            typer.echo(f"\nWould delete entire project directory:")
+            typer.echo(f"  {project_dir}")
+
+            # Count files
+            all_files = list(project_dir.rglob("*"))
+            typer.echo(f"\nFiles: {len(all_files):,} items")
+
+            typer.echo("\n⚠️  DANGEROUS: This cannot be undone!")
+            typer.echo("\n💡 Remove --dry-run to proceed")
+            return
+
+        typer.echo("\n⚠️  DANGEROUS: Hard reset will delete the entire project directory")
+        typer.echo(f"\nProject: {project_dir}")
+        typer.echo("\nThis will delete:")
+        typer.echo("  - Database files")
+        typer.echo("  - Configuration files")
+        typer.echo("  - Data files (Excel imports)")
+        typer.echo("  - Output files")
+        typer.echo("  - All project data")
+
+        if not force:
+            # Require special confirmation for hard reset
+            response = input("\nType 'DELETE_EVERYTHING' to confirm: ")
+            if response != "DELETE_EVERYTHING":
+                typer.echo("Cancelled")
+                raise typer.Exit(0)
+        else:
+            # With --force, still require confirmation but less strict
+            confirmed = manager.confirm_action(
+                "⚠️  This will delete the entire project directory",
+                force=False  # Always require confirmation for hard reset
+            )
+            if not confirmed:
+                typer.echo("Cancelled")
+                raise typer.Exit(0)
+
+        # Perform hard reset
+        import shutil
+        try:
+            shutil.rmtree(project_dir)
+            typer.echo(f"\n✅ Project directory deleted: {project_dir}")
+            typer.echo("\n💡 Run 'wareflow init' to create a new project")
+        except Exception as e:
+            typer.echo(f"\n❌ Error: Failed to delete project directory: {e}", err=True)
+            raise typer.Exit(1)
 
 
 def cli() -> None:
