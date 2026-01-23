@@ -9,7 +9,7 @@ import time
 import sqlite3
 import pandas as pd
 
-
+from wareflow_analysis.data_import.header_detector import HeaderDetector
 from wareflow_analysis.data_import.config_refiner import (
     load_existing_config,
     validate_config,
@@ -63,14 +63,24 @@ def run_import(
                 print(f"  -> {table_name}...", end=" ", flush=True)
 
             try:
-                # Read Excel file
-                df = pd.read_excel(mapping_config["source"])
+                # Read Excel file with header detection and normalization
+                detector = HeaderDetector()
+                source_path = Path(mapping_config["source"])
+
+                # Read with detected headers and normalize column names
+                df = detector.read_excel_with_header_detection(source_path, normalize_columns=True)
 
                 # Apply value mappings if configured
                 if "value_mappings" in mapping_config:
                     for col, mappings in mapping_config["value_mappings"].items():
+                        # Try both original French name and normalized name
                         if col in df.columns:
                             df[col] = df[col].map(mappings).fillna(df[col])
+                        else:
+                            # Try normalized version
+                            normalized_col = detector.normalize_column_name(col)
+                            if normalized_col in df.columns:
+                                df[normalized_col] = df[normalized_col].map(mappings).fillna(df[normalized_col])
 
                 # Import to database
                 rows_imported = df.to_sql(
