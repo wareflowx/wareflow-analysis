@@ -125,18 +125,23 @@ class TestDatabaseManager:
 
         # Verify backup was created
         assert backup_path.exists()
-        assert backup_path.name.startswith("test.db.backup_")
+        assert backup_path.name.startswith("test.backup_")
         assert backup_path.suffix == ".db"
 
         # Verify backup has same content
         original_conn = sqlite3.connect(sample_database)
         backup_conn = sqlite3.connect(backup_path)
 
-        original_conn.execute("SELECT COUNT(*) FROM produits")
-        backup_conn.execute("SELECT COUNT(*) FROM produits")
+        original_cursor = original_conn.cursor()
+        backup_cursor = backup_conn.cursor()
 
-        assert original_conn.fetchone()[0] == backup_conn.fetchone()[0]
+        original_cursor.execute("SELECT COUNT(*) FROM produits")
+        backup_cursor.execute("SELECT COUNT(*) FROM produits")
 
+        assert original_cursor.fetchone()[0] == backup_cursor.fetchone()[0]
+
+        original_cursor.close()
+        backup_cursor.close()
         original_conn.close()
         backup_conn.close()
 
@@ -260,9 +265,11 @@ class TestDatabaseManager:
 
     def test_backup_creates_new_file(self, sample_database):
         """Test that backup creates a separate file."""
+        import time
         manager = DatabaseManager(sample_database, sample_database.parent)
 
         backup1 = manager.backup_database()
+        time.sleep(1)  # Delay to ensure different timestamp (at least 1 second)
         backup2 = manager.backup_database()
 
         # Should create two different backup files
