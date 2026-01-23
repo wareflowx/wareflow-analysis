@@ -13,6 +13,7 @@ from wareflow_analysis.validation.validator import Validator
 from wareflow_analysis.validation.reporters import ValidationReporter
 from wareflow_analysis.analyze.abc import ABCAnalysis
 from wareflow_analysis.analyze.inventory import InventoryAnalysis
+from wareflow_analysis.export.reports.inventory_report import InventoryReportExporter
 
 app = typer.Typer(
     name="wareflow",
@@ -199,9 +200,104 @@ def analyze(
 
 
 @app.command()
-def export() -> None:
-    """Generate Excel reports."""
-    typer.echo("Export command not implemented yet")
+def export(
+    analysis: str = typer.Option(
+        "inventory",
+        "--analysis",
+        "-a",
+        help="Analysis to export (inventory only for now)",
+    ),
+    output: str = typer.Option(
+        None,
+        "--output",
+        "-o",
+        help="Output filename (default: auto-generated with timestamp)",
+    ),
+    dir: str = typer.Option(
+        "output",
+        "--dir",
+        "-d",
+        help="Output directory",
+    ),
+) -> None:
+    """Generate Excel reports from analysis results.
+
+    Exports analysis results to formatted Excel files with multiple sheets.
+
+    Examples:
+        wareflow export                          # Export inventory with auto filename
+        wareflow export --output report.xlsx     # Custom filename
+        wareflow export --dir reports/           # Custom directory
+    """
+    from datetime import datetime
+
+    # Check we're in a wareflow project
+    project_dir = Path.cwd()
+    config_file = project_dir / "config.yaml"
+
+    if not config_file.exists():
+        typer.echo(
+            "Error: Not in a wareflow project directory. "
+            "Run 'wareflow init' first.",
+            err=True,
+        )
+        raise typer.Exit(1)
+
+    db_path = project_dir / "warehouse.db"
+
+    if not db_path.exists():
+        typer.echo(
+            "Error: Database not found. Run 'wareflow import-data' first.",
+            err=True,
+        )
+        raise typer.Exit(1)
+
+    # Run the requested analysis and export
+    if analysis == "inventory":
+        typer.echo("\nRunning Inventory Analysis...")
+
+        # Run analysis
+        analyzer = InventoryAnalysis(db_path)
+        success, message = analyzer.connect()
+
+        if not success:
+            typer.echo(f"Error: {message}", err=True)
+            raise typer.Exit(1)
+
+        try:
+            results = analyzer.run()
+            analyzer.close()
+        except Exception as e:
+            analyzer.close()
+            typer.echo(f"Error: Analysis failed - {e}", err=True)
+            raise typer.Exit(1)
+
+        # Generate output filename if not provided
+        if output is None:
+            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+            output = f"inventory_report_{timestamp}.xlsx"
+
+        # Create output directory if it doesn't exist
+        output_dir = project_dir / dir
+        output_dir.mkdir(parents=True, exist_ok=True)
+
+        output_path = output_dir / output
+
+        # Export to Excel
+        typer.echo(f"Exporting to {output_path}...")
+        try:
+            exporter = InventoryReportExporter()
+            exporter.export(results, output_path)
+            typer.echo(f"\n[OK] Report exported successfully: {output_path}")
+        except Exception as e:
+            typer.echo(f"Error: Export failed - {e}", err=True)
+            raise typer.Exit(1)
+    else:
+        typer.echo(
+            f"Error: Unknown analysis '{analysis}'. Only 'inventory' is supported for now.",
+            err=True,
+        )
+        raise typer.Exit(1)
 
 
 @app.command()
