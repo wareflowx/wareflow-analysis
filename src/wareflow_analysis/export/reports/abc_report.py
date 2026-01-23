@@ -79,17 +79,17 @@ class ABCReportExporter:
         summary_data = {
             "Date de l'analyse": datetime.now().strftime('%Y-%m-%d %H:%M'),
             "Produits analysés": total_products,
-            "",
+            "---": "---",
             "Classe A": f"{class_a.get('count', 0):,} produits ({class_a.get('percentage', 0):.1f}%)",
-            f"  Picks: {class_a.get('picks', 0):,} ({class_a.get('percentage', 0):.1f}%)",
-            "",
+            "  Picks A": f"{class_a.get('picks', 0):,} ({class_a.get('percentage', 0):.1f}%)",
+            "---": "---",
             "Classe B": f"{class_b.get('count', 0):,} produits ({class_b.get('percentage', 0):.1f}%)",
-            f"  Picks: {class_b.get('picks', 0):,} ({class_b.get('percentage', 0):.1f}%)",
-            "",
+            "  Picks B": f"{class_b.get('picks', 0):,} ({class_b.get('percentage', 0):.1f}%)",
+            "---": "---",
             "Classe C": f"{class_c.get('count', 0):,} produits ({class_c.get('percentage', 0):.1f}%)",
-            f"  Picks: {class_c.get('picks', 0):,} ({class_c.get('percentage', 0):.1f}%)",
-            "",
-            f"Total picks: {total_picks:,}",
+            "  Picks C": f"{class_c.get('picks', 0):,} ({class_c.get('percentage', 0):.1f}%)",
+            "---": "---",
+            "Total picks": f"{total_picks:,}",
         }
 
         self.builder.add_sheet_with_key_value(
@@ -107,6 +107,8 @@ class ABCReportExporter:
         Args:
             results: ABC analysis results
         """
+        from openpyxl.styles import PatternFill
+
         sheet_name = "Classification ABC"
         classification = results.get("classification", [])
 
@@ -128,7 +130,7 @@ class ABCReportExporter:
         # Apply color coding by ABC class
         # Class A: Green, Class B: Orange, Class C: Red
         for row_idx, row_data in enumerate(df.itertuples(index=False), start=3):  # Start after title (row 1) and header (row 2)
-            abc_class = row_data[-2]  # abc_class is second to last column
+            abc_class = row_data[-1]  # abc_class is last column
 
             if abc_class == "A":
                 fill = PatternFill(start_color="C6EFCE", end_color="C6EFCE", fill_type="solid")
@@ -149,6 +151,3 @@ class ABCReportExporter:
 
         # Freeze header row
         self.builder.freeze_panes(sheet_name, row=3)
-
-        # Import PatternFill for color coding
-        from openpyxl.styles import PatternFill
