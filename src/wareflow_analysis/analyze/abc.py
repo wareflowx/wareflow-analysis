@@ -39,6 +39,23 @@ class ABCAnalysis:
         except Exception as e:
             return False, f"Connection failed: {e}"
 
+    def _check_missing_tables(self, required_tables: List[str]) -> List[str]:
+        """Check which required tables are missing from the database.
+
+        Args:
+            required_tables: List of table names that should exist
+
+        Returns:
+            List of missing table names
+        """
+        cursor = self.conn.cursor()
+        cursor.execute(
+            "SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%'"
+        )
+        existing_tables = {row[0] for row in cursor.fetchall()}
+        missing_tables = [table for table in required_tables if table not in existing_tables]
+        return missing_tables
+
     def run(self, lookback_days: int = 90) -> Dict[str, Any]:
         """Execute ABC classification analysis.
 
@@ -54,6 +71,23 @@ class ABCAnalysis:
         """
         if not self.conn:
             raise RuntimeError("Not connected to database. Call connect() first.")
+
+        # Check that required tables exist
+        required_tables = ["produits", "mouvements"]
+        missing_tables = self._check_missing_tables(required_tables)
+
+        if missing_tables:
+            raise RuntimeError(
+                f"Required table(s) not found: {', '.join(missing_tables)}\n\n"
+                f"ABC Classification requires the following tables to be imported:\n"
+                f"  - produits (product catalog)\n"
+                f"  - mouvements (stock movements)\n\n"
+                f"Make sure your Excel files contain these sheets and run:\n"
+                f"  wareflow import-data --init\n"
+                f"  wareflow import-data\n\n"
+                f"Required tables: {', '.join(required_tables)}\n"
+                f"Missing tables: {', '.join(missing_tables)}"
+            )
 
         query = f"""
         WITH product_movement AS (
@@ -121,8 +155,29 @@ class ABCAnalysis:
                 "total_picks": total_picks,
             }
 
+        except sqlite3.OperationalError as e:
+            error_msg = str(e)
+            if "no such column" in error_msg:
+                # Extract column name from error
+                column = error_msg.split(":")[-1].strip() if ":" in error_msg else "unknown"
+                raise RuntimeError(
+                    f"Database column error: '{column}'\n\n"
+                    f"This usually means the Excel column names were not normalized correctly.\n"
+                    f"Expected columns (normalized names):\n"
+                    f"  - no_produit\n"
+                    f"  - nom_produit\n"
+                    f"  - quantite\n"
+                    f"  - date_heure\n"
+                    f"  - type (for mouvements)\n\n"
+                    f"Try reimporting your data:\n"
+                    f"  rm warehouse.db\n"
+                    f"  wareflow import-data\n\n"
+                    f"Technical details: {error_msg}"
+                )
+            else:
+                raise RuntimeError(f"Database query failed: {error_msg}")
         except Exception as e:
-            raise RuntimeError(f"Query execution failed: {e}")
+            raise RuntimeError(f"Analysis failed: {e}")
 
     def _calculate_class_stats(
         self, df: pd.DataFrame, abc_class: str, total_picks: int
