@@ -134,12 +134,12 @@ class TestInventoryAnalysis:
         # Find Pilote category
         pilote = next((c for c in categories if c["category"] == "Pilote"), None)
         assert pilote is not None
-        assert pilote["count"] == 8
+        assert pilote["count"] == 9  # PROD001-005, PROD008, PROD010-012
 
         # Find Accessoires category
         accessoires = next((c for c in categories if c["category"] == "Accessoires"), None)
         assert accessoires is not None
-        assert accessoires["count"] == 5
+        assert accessoires["count"] == 5  # PROD006-007, PROD009, PROD013-014
 
         # Verify status distribution
         statuses = results["by_status"]
@@ -148,12 +148,12 @@ class TestInventoryAnalysis:
         # Find Actif status
         actif = next((s for s in statuses if s["status"] == "Actif"), None)
         assert actif is not None
-        assert actif["count"] == 8
+        assert actif["count"] == 12  # PROD001-007, PROD011-015
 
         # Find Inactif status
         inactif = next((s for s in statuses if s["status"] == "Inactif"), None)
         assert inactif is not None
-        assert inactif["count"] == 2
+        assert inactif["count"] == 2  # PROD008-009
 
         # Find En rupture status
         en_rupture = next((s for s in statuses if s["status"] == "En rupture"), None)

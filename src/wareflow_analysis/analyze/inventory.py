@@ -40,6 +40,12 @@ class InventoryAnalysis:
         except Exception as e:
             return False, f"Connection failed: {e}"
 
+    def close(self) -> None:
+        """Close database connection."""
+        if self.conn:
+            self.conn.close()
+            self.conn = None
+
     def run(self) -> Dict[str, Any]:
         """Execute inventory analysis.
 
