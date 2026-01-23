@@ -71,16 +71,22 @@ def copy_templates(project_path: Path) -> None:
         script_dst.write_text(script_src.read_text())
 
 
-def create_database(project_path: Path) -> None:
+def create_database(project_path: Path, overwrite: bool = False) -> None:
     """Create empty SQLite database with schema.
 
     Args:
         project_path: Path to project directory
+        overwrite: If False, skip if database already exists
     """
+    db_path = project_path / "warehouse.db"
+
+    # Skip if database already exists and overwrite is False
+    if db_path.exists() and not overwrite:
+        return
+
     schema_path = templates_dir / "schema.sql"
     schema_sql = schema_path.read_text()
 
-    db_path = project_path / "warehouse.db"
     conn = sqlite3.connect(db_path)
     conn.executescript(schema_sql)
     conn.commit()
