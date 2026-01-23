@@ -11,6 +11,7 @@ from wareflow_analysis.data_import.importer import (
 )
 from wareflow_analysis.validation.validator import Validator
 from wareflow_analysis.validation.reporters import ValidationReporter
+from wareflow_analysis.analyze.abc import ABCAnalysis
 
 app = typer.Typer(
     name="wareflow",
@@ -97,9 +98,77 @@ def import_data(
 
 
 @app.command()
-def analyze() -> None:
-    """Run all analyses."""
-    typer.echo("Analyze command not implemented yet")
+def analyze(
+    name: str = typer.Option(
+        "abc",
+        "--name",
+        "-n",
+        help="Analysis to run (default: abc)",
+    ),
+    days: int = typer.Option(
+        90,
+        "--days",
+        "-d",
+        help="Lookback period in days (default: 90)",
+    ),
+) -> None:
+    """Run warehouse analysis.
+
+    Performs analytics on imported warehouse data to generate insights.
+    Currently supported analyses:
+      - abc: ABC classification (Pareto analysis)
+
+    Examples:
+        wareflow analyze                 # Run ABC analysis (default)
+        wareflow analyze --name abc      # Explicit ABC analysis
+        wareflow analyze --days 60       # 60-day lookback period
+    """
+    # Check we're in a wareflow project
+    project_dir = Path.cwd()
+    config_file = project_dir / "config.yaml"
+
+    if not config_file.exists():
+        typer.echo(
+            "Error: Not in a wareflow project directory. "
+            "Run 'wareflow init' first.",
+            err=True,
+        )
+        raise typer.Exit(1)
+
+    db_path = project_dir / "warehouse.db"
+
+    if not db_path.exists():
+        typer.echo(
+            "Error: Database not found. Run 'wareflow import-data' first.",
+            err=True,
+        )
+        raise typer.Exit(1)
+
+    # Run the requested analysis
+    if name == "abc":
+        analyzer = ABCAnalysis(db_path)
+        success, message = analyzer.connect()
+
+        if not success:
+            typer.echo(f"Error: {message}", err=True)
+            raise typer.Exit(1)
+
+        try:
+            typer.echo(f"\nRunning ABC Classification analysis (last {days} days)...")
+            results = analyzer.run(days)
+            output = analyzer.format_output(results)
+            typer.echo(output)
+            analyzer.close()
+        except Exception as e:
+            analyzer.close()
+            typer.echo(f"Error: Analysis failed - {e}", err=True)
+            raise typer.Exit(1)
+    else:
+        typer.echo(
+            f"Error: Unknown analysis '{name}'. Available: abc",
+            err=True,
+        )
+        raise typer.Exit(1)
 
 
 @app.command()
