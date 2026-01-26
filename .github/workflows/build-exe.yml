@@ -36,7 +36,7 @@ jobs:
         run: |
           Write-Host "Build Information"
           Write-Host "=================="
-          $exePath = "dist\Warehouse-GUI.exe"
+          $exePath = "dist\wareflowx.exe"
           if (Test-Path $exePath) {
             $fileInfo = Get-Item $exePath
             Write-Host "File: $($fileInfo.Name)"
@@ -51,7 +51,7 @@ jobs:
       - name: Verify executable
         shell: pwsh
         run: |
-          $exePath = "dist\Warehouse-GUI.exe"
+          $exePath = "dist\wareflowx.exe"
           if (-not (Test-Path $exePath)) {
             Write-Host "ERROR: Executable was not built!"
             exit 1
@@ -66,9 +66,9 @@ jobs:
       - name: Generate SHA256 checksum
         shell: pwsh
         run: |
-          $exePath = "dist\Warehouse-GUI.exe"
+          $exePath = "dist\wareflowx.exe"
           $hash = Get-FileHash -Path $exePath -Algorithm SHA256
-          $checksumPath = "dist\Warehouse-GUI.exe.sha256"
+          $checksumPath = "dist\wareflowx.exe.sha256"
           $hash.Hash | Out-File -FilePath $checksumPath -Encoding utf8
           Write-Host "Checksum: $($hash.Hash)"
           Write-Host "Saved to: $checksumPath"
@@ -91,8 +91,8 @@ jobs:
         with:
           name: wareflow-gui-windows
           path: |
-            dist/Warehouse-GUI.exe
-            dist/Warehouse-GUI.exe.sha256
+            dist/wareflowx.exe
+            dist/wareflowx.exe.sha256
             dist/build-metadata.txt
           retention-days: 30
 

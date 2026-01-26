@@ -40,7 +40,7 @@ jobs:
         run: |
           Write-Host "Build Information"
           Write-Host "=================="
-          $exePath = "dist\Warehouse-GUI.exe"
+          $exePath = "dist\wareflowx.exe"
           if (Test-Path $exePath) {
             $fileInfo = Get-Item $exePath
             Write-Host "File: $($fileInfo.Name)"
@@ -51,7 +51,7 @@ jobs:
       - name: Verify executable
         shell: pwsh
         run: |
-          $exePath = "dist\Warehouse-GUI.exe"
+          $exePath = "dist\wareflowx.exe"
           if (-not (Test-Path $exePath)) {
             Write-Host "ERROR: Executable was not built!"
             exit 1
@@ -64,9 +64,9 @@ jobs:
       - name: Generate SHA256 checksum
         shell: pwsh
         run: |
-          $exePath = "dist\Warehouse-GUI.exe"
+          $exePath = "dist\wareflowx.exe"
           $hash = Get-FileHash -Path $exePath -Algorithm SHA256
-          $checksumPath = "dist\Warehouse-GUI.exe.sha256"
+          $checksumPath = "dist\wareflowx.exe.sha256"
           $hash.Hash | Out-File -FilePath $checksumPath -Encoding utf8
           Write-Host "Checksum: $($hash.Hash)"
 
@@ -75,8 +75,8 @@ jobs:
         with:
           name: wareflow-gui-windows
           path: |
-            dist/Warehouse-GUI.exe
-            dist/Warehouse-GUI.exe.sha256
+            dist/wareflowx.exe
+            dist/wareflowx.exe.sha256
           retention-days: 90
 
       - name: Set artifact name
@@ -104,11 +104,11 @@ jobs:
 
       - name: Verify artifacts
         run: |
-          if [ ! -f "artifacts/Warehouse-GUI.exe" ]; then
-            echo "ERROR: Warehouse-GUI.exe not found!"
+          if [ ! -f "artifacts/wareflowx.exe" ]; then
+            echo "ERROR: wareflowx.exe not found!"
             exit 1
           fi
-          if [ ! -f "artifacts/Warehouse-GUI.exe.sha256" ]; then
+          if [ ! -f "artifacts/wareflowx.exe.sha256" ]; then
             echo "ERROR: Checksum file not found!"
             exit 1
           fi
@@ -122,8 +122,8 @@ jobs:
         uses: softprops/action-gh-release@v1
         with:
           files: |
-            artifacts/Warehouse-GUI.exe
-            artifacts/Warehouse-GUI.exe.sha256
+            artifacts/wareflowx.exe
+            artifacts/wareflowx.exe.sha256
           draft: false
           prerelease: false
           generate_release_notes: true
