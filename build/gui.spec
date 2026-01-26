@@ -74,8 +74,7 @@ a = Analysis(
 
         # Excel-to-SQL
         'excel_to_sql',
-        'excel_to_sql.sdk',
-        'excel_to_sql.validators',
+        'excel_to_sql.auto_pilot',  # Used by autopilot.py for PatternDetector
     ],
     hookspath=[],
     hooksconfig={},
