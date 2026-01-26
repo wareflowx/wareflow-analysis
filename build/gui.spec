@@ -20,6 +20,12 @@ SPEC_DIR = os.path.join(REPO_ROOT, 'build')
 # Collect all data files from excel_to_sql
 excel_to_sql_datas = collect_data_files('excel_to_sql')
 
+# Collect ALL submodules from excel_to_sql automatically
+excel_to_sql_modules = collect_submodules('excel_to_sql')
+
+# Collect ALL submodules from wareflow_analysis automatically
+wareflow_modules = collect_submodules('wareflow_analysis')
+
 a = Analysis(
     [os.path.join(REPO_ROOT, 'src', 'wareflow_analysis', 'gui', '__main__.py')],
     pathex=[REPO_ROOT],
@@ -72,34 +78,11 @@ a = Analysis(
         # Theme detection
         'darkdetect',
 
-        # Excel-to-SQL
-        'excel_to_sql',
-        'excel_to_sql.auto_pilot',  # Used by autopilot.py for PatternDetector
+        # Auto-include ALL excel_to_sql submodules (simple & robust)
+        *excel_to_sql_modules,
 
-        # Wareflow Analysis modules (for CLI integration via CliRunner)
-        'wareflow_analysis',
-        'wareflow_analysis.cli',
-        'wareflow_analysis.init',
-        'wareflow_analysis.data_import',
-        'wareflow_analysis.data_import.autopilot',
-        'wareflow_analysis.data_import.importer',
-        'wareflow_analysis.data_import.header_detector',
-        'wareflow_analysis.validation',
-        'wareflow_analysis.validation.validator',
-        'wareflow_analysis.validation.reporters',
-        'wareflow_analysis.analyze',
-        'wareflow_analysis.analyze.abc',
-        'wareflow_analysis.analyze.inventory',
-        'wareflow_analysis.export',
-        'wareflow_analysis.export.reports',
-        'wareflow_analysis.export.reports.abc_report',
-        'wareflow_analysis.export.reports.inventory_report',
-        'wareflow_analysis.export.excel_builder',
-        'wareflow_analysis.export.excel_formatters',
-        'wareflow_analysis.database',
-        'wareflow_analysis.database.manager',
-        'wareflow_analysis.common',
-        'wareflow_analysis.common.output_handler',
+        # Auto-include ALL wareflow_analysis submodules (for CLI integration)
+        *wareflow_modules,
     ],
     hookspath=[],
     hooksconfig={},
