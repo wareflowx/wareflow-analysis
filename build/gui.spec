@@ -134,7 +134,6 @@ pyz = PYZ(a.pure, a.zipped_data, cipher=block_cipher)
 exe = EXE(
     pyz,
     a.scripts,
-    [],  # Exclude a.binaries and a.zipfiles for one-file build
     a.binaries,
     a.zipfiles,
     a.datas,
