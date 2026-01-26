@@ -9,7 +9,82 @@ permissions:
   contents: write
 
 jobs:
+  build:
+    runs-on: windows-latest
+
+    outputs:
+      artifact_name: ${{ steps.artifact.outputs.name }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+          cache: 'pip'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install pyinstaller
+          pip install -e .
+
+      - name: Build executable
+        run: |
+          pyinstaller build/gui.spec --clean --noconfirm
+
+      - name: Display build info
+        shell: pwsh
+        run: |
+          Write-Host "Build Information"
+          Write-Host "=================="
+          $exePath = "dist\Warehouse-GUI.exe"
+          if (Test-Path $exePath) {
+            $fileInfo = Get-Item $exePath
+            Write-Host "File: $($fileInfo.Name)"
+            Write-Host "Size: $([math]::Round($fileInfo.Length / 1MB, 2)) MB"
+            Write-Host "Created: $($fileInfo.LastWriteTime)"
+          }
+
+      - name: Verify executable
+        shell: pwsh
+        run: |
+          $exePath = "dist\Warehouse-GUI.exe"
+          if (-not (Test-Path $exePath)) {
+            Write-Host "ERROR: Executable was not built!"
+            exit 1
+          }
+          $fileSize = (Get-Item $exePath).Length
+          if ($fileSize -lt 10MB) {
+            Write-Host "WARNING: Executable size is unusually small: $fileSize bytes"
+          }
+
+      - name: Generate SHA256 checksum
+        shell: pwsh
+        run: |
+          $exePath = "dist\Warehouse-GUI.exe"
+          $hash = Get-FileHash -Path $exePath -Algorithm SHA256
+          $checksumPath = "dist\Warehouse-GUI.exe.sha256"
+          $hash.Hash | Out-File -FilePath $checksumPath -Encoding utf8
+          Write-Host "Checksum: $($hash.Hash)"
+
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: wareflow-gui-windows
+          path: |
+            dist/Warehouse-GUI.exe
+            dist/Warehouse-GUI.exe.sha256
+          retention-days: 90
+
+      - name: Set artifact name
+        id: artifact
+        run: echo "name=wareflow-gui-windows" >> $env:GITHUB_OUTPUT
+
   release:
+    needs: build
     runs-on: ubuntu-latest
 
     steps:
@@ -19,7 +94,7 @@ jobs:
       - name: Download build artifacts
         uses: actions/download-artifact@v4
         with:
-          name: wareflow-gui-windows
+          name: ${{ needs.build.outputs.artifact_name }}
           path: ./artifacts
 
       - name: Display artifacts
@@ -39,64 +114,9 @@ jobs:
           fi
           echo "All artifacts verified successfully"
 
-      - name: Prepare release notes
-        id: release_notes
-        run: |
-          VERSION="${GITHUB_REF#refs/tags/v}"
-          cat > release_notes.md << EOF
-          # Wareflow Analysis v${VERSION}
-
-          ## 🚀 Windows Executable
-
-          This release includes a standalone Windows executable that requires no Python installation.
-
-          ### 📥 Download
-
-          - **Warehouse-GUI.exe** - The main application executable
-          - **Warehouse-GUI.exe.sha256** - SHA256 checksum for verification
-
-          ### ✨ Features
-
-          - 🏠 **Dashboard**: Project status and quick actions
-          - 📥 **Data Import**: Excel file import with Auto-Pilot
-          - 📊 **Analysis**: ABC classification and inventory analysis
-          - 📤 **Export**: Generate Excel reports
-          - 📈 **Status**: Database and project information
-
-          ### 🔐 Verification
-
-          To verify the download integrity:
-
-          \`\`\`bash
-          # On Windows (PowerShell)
-          Get-FileHash Warehouse-GUI.exe -Algorithm SHA256
-
-          # On Linux/macOS
-          sha256sum -c Warehouse-GUI.exe.sha256
-          \`\`\`
-
-          ### 📋 System Requirements
-
-          - Windows 10 or later
-          - 100 MB free disk space
-          - No Python installation required
-
-          ### 🐛 Bug Fixes
-
-          See the [commit history](https://github.com/wareflowx/wareflow-analysis/commits/v${VERSION}) for details.
-
-          ### 📚 Documentation
-
-          - [User Guide](https://github.com/wareflowx/wareflow-analysis/blob/main/README.md)
-          - [Issue Tracker](https://github.com/wareflowx/wareflow-analysis/issues)
-
-          ---
-
-          **Full Changelog**: https://github.com/wareflowx/wareflow-analysis/compare/${{ github.event.release.target_commitish || 'previous' }}...v${VERSION}
-          EOF
-          echo "notes<<EOF" >> $GITHUB_OUTPUT
-          cat release_notes.md >> $GITHUB_OUTPUT
-          echo "EOF" >> $GITHUB_OUTPUT
+      - name: Extract version from tag
+        id: version
+        run: echo "version=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v1
@@ -104,22 +124,9 @@ jobs:
           files: |
             artifacts/Warehouse-GUI.exe
             artifacts/Warehouse-GUI.exe.sha256
-          body: ${{ steps.release_notes.outputs.notes }}
           draft: false
           prerelease: false
           generate_release_notes: true
+          name: Wareflow Analysis v${{ steps.version.outputs.version }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Update release summary
-        run: |
-          echo "## 🎉 Release Created Successfully!" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "### 📦 Available Downloads" >> $GITHUB_STEP_SUMMARY
-          echo "- Warehouse-GUI.exe" >> $GITHUB_STEP_SUMMARY
-          echo "- Warehouse-GUI.exe.sha256" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "### 📊 Build Information" >> $GITHUB_STEP_SUMMARY
-          echo "- Tag: ${{ github.ref_name }}" >> $GITHUB_STEP_SUMMARY
-          echo "- Commit: ${{ github.sha }}" >> $GITHUB_STEP_SUMMARY
-          echo "- Workflow: ${{ github.workflow }}" >> $GITHUB_STEP_SUMMARY
