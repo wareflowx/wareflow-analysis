@@ -8,31 +8,31 @@ all dependencies and can run without Python installation.
 
 import sys
 import os
-from pathlib import Path
 from PyInstaller.utils.hooks import collect_data_files, collect_submodules
 
 block_cipher = None
 
-# Get the directory containing this spec file
-SPEC_DIR = Path(__file__).parent
-REPO_ROOT = SPEC_DIR.parent
+# PyInstaller executes this from the repository root
+# Use os.getcwd() to get the current working directory
+REPO_ROOT = os.getcwd()
+SPEC_DIR = os.path.join(REPO_ROOT, 'build')
 
 # Collect all data files from excel_to_sql
 excel_to_sql_datas = collect_data_files('excel_to_sql')
 
 a = Analysis(
-    [str(REPO_ROOT / 'src' / 'wareflow_analysis' / 'gui' / '__main__.py')],
-    pathex=[str(REPO_ROOT)],
+    [os.path.join(REPO_ROOT, 'src', 'wareflow_analysis', 'gui', '__main__.py')],
+    pathex=[REPO_ROOT],
     binaries=[],
     datas=[
         # Source code
-        (str(REPO_ROOT / 'src' / 'wareflow_analysis'), 'wareflow_analysis'),
+        (os.path.join(REPO_ROOT, 'src', 'wareflow_analysis'), 'wareflow_analysis'),
 
         # Templates
-        (str(REPO_ROOT / 'src' / 'wareflow_analysis' / 'templates'), 'wareflow_analysis/templates'),
+        (os.path.join(REPO_ROOT, 'src', 'wareflow_analysis', 'templates'), 'wareflow_analysis/templates'),
 
         # Excel-to-SQL data files
-        *[(str(REPO_ROOT / src), dst) for src, dst in excel_to_sql_datas],
+        *[(os.path.join(REPO_ROOT, src), dst) for src, dst in excel_to_sql_datas],
     ],
     hiddenimports=[
         # GUI framework
@@ -157,5 +157,5 @@ exe = EXE(
     target_arch=None,
     codesign_identity=None,
     entitlements_file=None,
-    icon=str(SPEC_DIR / 'icon.ico'),
+    icon=os.path.join(SPEC_DIR, 'icon.ico'),
 )
