@@ -107,8 +107,7 @@ a = Analysis(
         'http',
         'http.server',
         'urllib3',
-        'urllib',
-        'urllib.parse',
+        # Note: urllib and urllib.parse cannot be excluded - pathlib needs them
         'xml',
         'xmlrpc',
 
