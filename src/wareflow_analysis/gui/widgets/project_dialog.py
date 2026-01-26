@@ -196,29 +196,17 @@ class NewProjectDialog(ctk.CTkToplevel):
             return
 
         try:
-            # Import the CLI init function
-            from wareflow_analysis.cli import app as cli_app
-            from typer.testing import CliRunner
+            # Import and call the initialization function directly
+            from wareflow_analysis.init import initialize_project
 
-            # Change to parent directory
-            original_cwd = os.getcwd()
-            os.chdir(location)
+            # Initialize the project
+            success, message = initialize_project(name, Path(location))
 
-            try:
-                # Run wareflow init
-                runner = CliRunner()
-                result = runner.invoke(
-                    cli_app,
-                    ["init", name, "--force"],
-                    catch_exceptions=False
-                )
+            if not success:
+                self._show_error(f"Failed to create project: {message}")
+                return
 
-                if result.exit_code != 0:
-                    raise Exception(result.stderr or "Failed to create project")
-
-            finally:
-                os.chdir(original_cwd)
-
+            # Store project path
             self.project_path = project_path
 
             # Call callback
