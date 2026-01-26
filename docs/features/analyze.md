@@ -687,7 +687,7 @@ $ wareflow analyze
 💡 Solution:
   Run 'wareflow import' to create and populate the database
 
-📖 Documentation: https://github.com/wareflowx/wareflow-analysis
+📖 Documentation: https://github.com/wareflowx/was
 ```
 
 ---

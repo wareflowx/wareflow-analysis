@@ -960,7 +960,7 @@ Missing files:
     - mouvements.xlsx
     - commandes.xlsx
 
-📖 Documentation: https://github.com/wareflowx/wareflow-analysis
+📖 Documentation: https://github.com/wareflowx/was
 ```
 
 ---
@@ -1057,7 +1057,7 @@ Processing 3 import jobs...
 
 📄 Error log: .wareflow/import_errors_20250121_143022.log
 
-📖 Documentation: https://github.com/wareflowx/wareflow-analysis#data-validation
+📖 Documentation: https://github.com/wareflowx/was#data-validation
 ```
 
 #### Option: --skip-invalid
@@ -1321,7 +1321,7 @@ Details:
 
 ⚠️  WARNING: Option 2 will delete all existing data!
 
-📖 Documentation: https://github.com/wareflowx/wareflow-analysis#troubleshooting
+📖 Documentation: https://github.com/wareflowx/was#troubleshooting
 ```
 
 #### Option: --recreate-db

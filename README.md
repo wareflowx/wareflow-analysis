@@ -24,7 +24,7 @@ pip install wareflow-analysis
 
 ### Option 2: Using the standalone Windows executable (Recommended for users)
 
-Download the latest `Warehouse-GUI.exe` from the [Releases](https://github.com/wareflowx/wareflow-analysis/releases) page. No Python installation required.
+Download the latest `Warehouse-GUI.exe` from the [Releases](https://github.com/wareflowx/was/releases) page. No Python installation required.
 
 ## Quick Start
 
@@ -133,8 +133,8 @@ Contributions are welcome! Please feel free to submit a Pull Request.
 
 ## Support
 
-- **Issues**: [GitHub Issues](https://github.com/wareflowx/wareflow-analysis/issues)
-- **Documentation**: [Project Docs](https://github.com/wareflowx/wareflow-analysis)
+- **Issues**: [GitHub Issues](https://github.com/wareflowx/was/issues)
+- **Documentation**: [Project Docs](https://github.com/wareflowx/was)
 
 ## Acknowledgments
 

@@ -24,7 +24,7 @@ This document describes how to build Wareflow Analysis from source, including cr
 
 ```bash
 # Clone the repository
-git clone https://github.com/wareflowx/wareflow-analysis.git
+git clone https://github.com/wareflowx/was.git
 cd wareflow-analysis
 
 # Create a virtual environment
@@ -42,7 +42,7 @@ pytest
 
 ```bash
 # Clone the repository
-git clone https://github.com/wareflowx/wareflow-analysis.git
+git clone https://github.com/wareflowx/was.git
 cd wareflow-analysis
 
 # Sync dependencies with uv
@@ -179,7 +179,7 @@ GitHub Actions automatically builds the Windows executable on:
 
 ### Downloading Build Artifacts
 
-1. Go to the [Actions](https://github.com/wareflowx/wareflow-analysis/actions) page
+1. Go to the [Actions](https://github.com/wareflowx/was/actions) page
 2. Select a workflow run
 3. Scroll to "Artifacts" section
 4. Download `wareflow-gui-windows`
@@ -291,7 +291,7 @@ Target startup time: **< 3 seconds**
 If you encounter build issues:
 
 1. Check the [Troubleshooting](#troubleshooting) section
-2. Search [existing issues](https://github.com/wareflowx/wareflow-analysis/issues)
+2. Search [existing issues](https://github.com/wareflowx/was/issues)
 3. Create a new issue with:
    - Your platform and Python version
    - Full error message

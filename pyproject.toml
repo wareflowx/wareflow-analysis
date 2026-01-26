@@ -28,9 +28,9 @@ wareflow = "wareflow_analysis.cli:cli"
 wareflow-gui = "wareflow_analysis.gui:main"
 
 [project.urls]
-Homepage = "https://github.com/wareflowx/wareflow-analysis"
-Repository = "https://github.com/wareflowx/wareflow-analysis"
-Issues = "https://github.com/wareflowx/wareflow-analysis/issues"
+Homepage = "https://github.com/wareflowx/was"
+Repository = "https://github.com/wareflowx/was"
+Issues = "https://github.com/wareflowx/was/issues"
 
 [dependency-groups]
 dev = [
