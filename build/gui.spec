@@ -74,9 +74,8 @@ a = Analysis(
 
         # Excel-to-SQL
         'excel_to_sql',
-        'excel_to_sql.core',
-        'excel_to_sql.importer',
-        'excel_to_sql.validator',
+        'excel_to_sql.sdk',
+        'excel_to_sql.validators',
     ],
     hookspath=[],
     hooksconfig={},
