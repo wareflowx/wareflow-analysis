@@ -104,14 +104,29 @@ class HomeView(ctk.CTkFrame):
         )
         self.project_path_label.grid(row=0, column=1, sticky="w")
 
+        # Buttons frame
+        button_frame = ctk.CTkFrame(frame, fg_color="transparent")
+        button_frame.grid(row=0, column=2, padx=(10, 0))
+
+        # New project button
+        new_btn = ctk.CTkButton(
+            button_frame,
+            text="+ New",
+            width=80,
+            fg_color="green",
+            hover_color="darkgreen",
+            command=self._on_new_project
+        )
+        new_btn.grid(row=0, column=0, padx=2)
+
         # Browse button
         browse_btn = ctk.CTkButton(
-            frame,
-            text="Browse...",
-            width=100,
-            command=self._on_browse_project
+            button_frame,
+            text="Open...",
+            width=80,
+            command=self._on_open_project
         )
-        browse_btn.grid(row=0, column=2, padx=(10, 0))
+        browse_btn.grid(row=0, column=1, padx=2)
 
     def _build_database_stats(self) -> None:
         """Build the database statistics section."""
@@ -189,19 +204,49 @@ class HomeView(ctk.CTkFrame):
         self.activity_text.pack(padx=15, pady=(0, 15), fill="both", expand=True)
         self.activity_text.configure(state="disabled")
 
-    def _on_browse_project(self) -> None:
-        """Handle browse project button click."""
-        from tkinter import filedialog
+    def _on_new_project(self) -> None:
+        """Handle new project button click."""
+        from wareflow_analysis.gui.widgets.project_dialog import NewProjectDialog
 
-        path = filedialog.askdirectory(title="Select Wareflow Project Directory")
+        NewProjectDialog(
+            self,
+            on_project_created=self._on_project_created
+        )
 
-        if path:
-            success = self.state_manager.set_project_dir(Path(path))
-            if success:
-                self._refresh_display()
-                self._log("Project loaded successfully")
-            else:
-                self._log("Error: Not a valid Wareflow project (config.yaml not found)")
+    def _on_open_project(self) -> None:
+        """Handle open project button click."""
+        from wareflow_analysis.gui.widgets.project_dialog import OpenProjectDialog
+
+        OpenProjectDialog(
+            self,
+            on_project_opened=self._on_project_opened
+        )
+
+    def _on_project_created(self, project_path: Path) -> None:
+        """Handle project creation callback.
+
+        Args:
+            project_path: Path to the created project
+        """
+        success = self.state_manager.set_project_dir(project_path)
+        if success:
+            self._refresh_display()
+            self._log(f"Project created: {project_path.name}")
+        else:
+            self._log("Error: Failed to load newly created project")
+
+    def _on_project_opened(self, project_path: Path) -> None:
+        """Handle project opened callback.
+
+        Args:
+            project_path: Path to the opened project
+        """
+        success = self.state_manager.set_project_dir(project_path)
+        if success:
+            self._refresh_display()
+            self._log(f"Project opened: {project_path.name}")
+        else:
+            self._log("Error: Failed to load project")
 
     def _on_action(self, action: str) -> None:
         """Handle action button click.
