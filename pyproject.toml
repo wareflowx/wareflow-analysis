@@ -19,10 +19,13 @@ dependencies = [
     "openpyxl>=3.0",
     "excel-to-sql>=0.4.0",
     "pyyaml",
+    "customtkinter>=5.2",
+    "pillow>=10.0",
 ]
 
 [project.scripts]
 wareflow = "wareflow_analysis.cli:cli"
+wareflow-gui = "wareflow_analysis.gui:main"
 
 [project.urls]
 Homepage = "https://github.com/wareflowx/wareflow-analysis"
