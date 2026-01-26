@@ -1,0 +1,106 @@
+name: Build Windows Executable
+
+on:
+  push:
+    branches: [ main, develop, 'feature/**' ]
+  pull_request:
+    branches: [ main, develop ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+          cache: 'pip'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install pyinstaller
+          pip install -e .
+
+      - name: Build executable
+        run: |
+          pyinstaller build/gui.spec --clean --noconfirm
+
+      - name: Display build info
+        shell: pwsh
+        run: |
+          Write-Host "Build Information"
+          Write-Host "=================="
+          $exePath = "dist\Warehouse-GUI.exe"
+          if (Test-Path $exePath) {
+            $fileInfo = Get-Item $exePath
+            Write-Host "File: $($fileInfo.Name)"
+            Write-Host "Size: $([math]::Round($fileInfo.Length / 1MB, 2)) MB"
+            Write-Host "Created: $($fileInfo.LastWriteTime)"
+            Write-Host "Full Path: $($fileInfo.FullName)"
+          } else {
+            Write-Host "ERROR: Executable not found!"
+            exit 1
+          }
+
+      - name: Verify executable
+        shell: pwsh
+        run: |
+          $exePath = "dist\Warehouse-GUI.exe"
+          if (-not (Test-Path $exePath)) {
+            Write-Host "ERROR: Executable was not built!"
+            exit 1
+          }
+          # Check file size (should be at least 10 MB)
+          $fileSize = (Get-Item $exePath).Length
+          if ($fileSize -lt 10MB) {
+            Write-Host "WARNING: Executable size is unusually small: $fileSize bytes"
+          }
+          Write-Host "Executable verified successfully"
+
+      - name: Generate SHA256 checksum
+        shell: pwsh
+        run: |
+          $exePath = "dist\Warehouse-GUI.exe"
+          $hash = Get-FileHash -Path $exePath -Algorithm SHA256
+          $checksumPath = "dist\Warehouse-GUI.exe.sha256"
+          $hash.Hash | Out-File -FilePath $checksumPath -Encoding utf8
+          Write-Host "Checksum: $($hash.Hash)"
+          Write-Host "Saved to: $checksumPath"
+
+      - name: Generate build metadata
+        shell: pwsh
+        run: |
+          $metadata = @{
+            "build_date" = (Get-Date).ToString("yyyy-MM-dd HH:mm:ss")
+            "git_commit" = "${{ github.sha }}"
+            "git_ref" = "${{ github.ref }}"
+            "github_run_id" = "${{ github.run_id }}"
+            "github_run_number" = "${{ github.run_number }}"
+          }
+          $metadata | Out-File "dist\build-metadata.txt" -Encoding utf8
+          Write-Host "Build metadata created"
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: wareflow-gui-windows
+          path: |
+            dist/Warehouse-GUI.exe
+            dist/Warehouse-GUI.exe.sha256
+            dist/build-metadata.txt
+          retention-days: 30
+
+      - name: Upload build summary
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-summary
+          path: |
+            dist/*.txt
+          retention-days: 30
+          if-no-files-found: ignore

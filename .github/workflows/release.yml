@@ -1,0 +1,132 @@
+name: Create Release
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: windows-latest
+
+    outputs:
+      artifact_name: ${{ steps.artifact.outputs.name }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+          cache: 'pip'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install pyinstaller
+          pip install -e .
+
+      - name: Build executable
+        run: |
+          pyinstaller build/gui.spec --clean --noconfirm
+
+      - name: Display build info
+        shell: pwsh
+        run: |
+          Write-Host "Build Information"
+          Write-Host "=================="
+          $exePath = "dist\Warehouse-GUI.exe"
+          if (Test-Path $exePath) {
+            $fileInfo = Get-Item $exePath
+            Write-Host "File: $($fileInfo.Name)"
+            Write-Host "Size: $([math]::Round($fileInfo.Length / 1MB, 2)) MB"
+            Write-Host "Created: $($fileInfo.LastWriteTime)"
+          }
+
+      - name: Verify executable
+        shell: pwsh
+        run: |
+          $exePath = "dist\Warehouse-GUI.exe"
+          if (-not (Test-Path $exePath)) {
+            Write-Host "ERROR: Executable was not built!"
+            exit 1
+          }
+          $fileSize = (Get-Item $exePath).Length
+          if ($fileSize -lt 10MB) {
+            Write-Host "WARNING: Executable size is unusually small: $fileSize bytes"
+          }
+
+      - name: Generate SHA256 checksum
+        shell: pwsh
+        run: |
+          $exePath = "dist\Warehouse-GUI.exe"
+          $hash = Get-FileHash -Path $exePath -Algorithm SHA256
+          $checksumPath = "dist\Warehouse-GUI.exe.sha256"
+          $hash.Hash | Out-File -FilePath $checksumPath -Encoding utf8
+          Write-Host "Checksum: $($hash.Hash)"
+
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: wareflow-gui-windows
+          path: |
+            dist/Warehouse-GUI.exe
+            dist/Warehouse-GUI.exe.sha256
+          retention-days: 90
+
+      - name: Set artifact name
+        id: artifact
+        run: echo "name=wareflow-gui-windows" >> $env:GITHUB_OUTPUT
+
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Download build artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: ${{ needs.build.outputs.artifact_name }}
+          path: ./artifacts
+
+      - name: Display artifacts
+        run: |
+          echo "Downloaded artifacts:"
+          ls -lh artifacts/
+
+      - name: Verify artifacts
+        run: |
+          if [ ! -f "artifacts/Warehouse-GUI.exe" ]; then
+            echo "ERROR: Warehouse-GUI.exe not found!"
+            exit 1
+          fi
+          if [ ! -f "artifacts/Warehouse-GUI.exe.sha256" ]; then
+            echo "ERROR: Checksum file not found!"
+            exit 1
+          fi
+          echo "All artifacts verified successfully"
+
+      - name: Extract version from tag
+        id: version
+        run: echo "version=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v1
+        with:
+          files: |
+            artifacts/Warehouse-GUI.exe
+            artifacts/Warehouse-GUI.exe.sha256
+          draft: false
+          prerelease: false
+          generate_release_notes: true
+          name: Wareflow Analysis v${{ steps.version.outputs.version }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

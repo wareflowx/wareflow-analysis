@@ -33,7 +33,7 @@ def test_analyze_command_exists() -> None:
     """Test that analyze command exists."""
     result = runner.invoke(app, ["analyze", "--help"])
     assert result.exit_code == 0
-    assert "Run all analyses" in result.stdout
+    assert "Run warehouse analysis" in result.stdout
 
 
 def test_export_command_exists() -> None:
