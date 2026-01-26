@@ -151,7 +151,7 @@ exe = EXE(
     a.zipfiles,
     a.datas,
     [],
-    name='Warehouse-GUI',
+    name='wareflowx',
     debug=False,
     bootloader_ignore_signals=False,
     strip=False,
@@ -165,4 +165,5 @@ exe = EXE(
     codesign_identity=None,
     entitlements_file=None,
     icon=os.path.join(SPEC_DIR, 'icon.ico'),
+    version_info=os.path.join(SPEC_DIR, 'version_info.txt'),
 )
