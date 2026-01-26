@@ -25,6 +25,8 @@ excel_to_sql_modules = collect_submodules('excel_to_sql')
 
 # Collect ALL submodules from wareflow_analysis automatically
 wareflow_modules = collect_submodules('wareflow_analysis')
+# Exclude CLI module - GUI doesn't need it and it has problematic imports
+wareflow_modules = [m for m in wareflow_modules if not m.startswith('wareflow_analysis.cli')]
 
 a = Analysis(
     [os.path.join(REPO_ROOT, 'src', 'wareflow_analysis', 'gui', '__main__.py')],
